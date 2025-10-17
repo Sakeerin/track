@@ -1,0 +1,51 @@
+{
+  "app": {
+    "name": "Parcel Tracking System"
+  },
+  "nav": {
+    "track": "Track",
+    "admin": "Admin",
+    "help": "Help"
+  },
+  "tracking": {
+    "title": "Track Your Parcels",
+    "description": "Enter up to 20 tracking numbers to get real-time updates on your shipments.",
+    "placeholder": "Enter tracking numbers (one per line)",
+    "submit": "Track Parcels",
+    "results": "Tracking Results",
+    "noResults": "No tracking information found",
+    "error": "An error occurred while tracking your parcels"
+  },
+  "status": {
+    "created": "Created",
+    "picked_up": "Picked Up",
+    "in_transit": "In Transit",
+    "at_hub": "At Hub",
+    "out_for_delivery": "Out for Delivery",
+    "delivered": "Delivered",
+    "exception": "Exception",
+    "returned": "Returned"
+  },
+  "common": {
+    "loading": "Loading...",
+    "error": "Error",
+    "retry": "Retry",
+    "close": "Close",
+    "save": "Save",
+    "cancel": "Cancel",
+    "delete": "Delete",
+    "edit": "Edit",
+    "view": "View",
+    "export": "Export",
+    "search": "Search",
+    "filter": "Filter",
+    "clear": "Clear",
+    "language": "Language"
+  },
+  "footer": {
+    "copyright": "© 2024 Parcel Tracking System. All rights reserved.",
+    "privacy": "Privacy Policy",
+    "terms": "Terms of Service",
+    "contact": "Contact Us"
+  }
+}
