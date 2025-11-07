@@ -138,6 +138,15 @@ class Event extends Model
         // Update shipment status when a new event is created
         static::created(function ($event) {
             $event->shipment->updateCurrentStatus();
+            
+            // Trigger ETA recalculation if needed
+            $etaService = app(\App\Services\ETA\ETACalculationService::class);
+            if ($etaService->shouldRecalculateETA($event)) {
+                \App\Jobs\RecalculateETAJob::dispatch(
+                    $event->shipment_id,
+                    "Event {$event->event_code} occurred"
+                );
+            }
         });
     }
 }

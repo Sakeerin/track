@@ -32,7 +32,6 @@
 
 - [x] 3. Build event ingestion system
 
-
   - Implement webhook endpoint for receiving scan events from handhelds and partners
   - Create SFTP batch processing for CSV file uploads
   - Build event validation and normalization service
@@ -64,7 +63,8 @@
   - Verify event deduplication and ordering
   - _Requirements: 7.1, 7.2, 7.6_
 
-- [ ] 4. Develop ETA calculation engine
+- [x] 4. Develop ETA calculation engine
+
 
   - Implement deterministic ETA rules based on lane and service type
   - Build dynamic adjustment logic for holidays, cut-off times, and congestion
@@ -72,7 +72,7 @@
   - Add configuration interface for ETA rules management
   - _Requirements: 8.1, 8.2, 8.3_
 
-- [ ] 4.1 Create ETA service with rule engine
+- [x] 4.1 Create ETA service with rule engine
 
   - Build lane-based ETA calculation (origin-destination pairs)
   - Implement service type modifiers (standard, express, economy)
@@ -80,7 +80,7 @@
   - Create ETA recalculation job for event triggers
   - _Requirements: 8.1, 8.2, 8.3_
 
-- [ ] 4.2 Write unit tests for ETA calculations
+- [x] 4.2 Write unit tests for ETA calculations
 
   - Test deterministic rules with various lane/service combinations
   - Validate holiday and weekend adjustments
