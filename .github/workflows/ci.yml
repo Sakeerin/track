@@ -1,170 +1,170 @@
-name: CI/CD Pipeline
+# name: CI/CD Pipeline
 
-on:
-  push:
-    branches: [ main, develop ]
-  pull_request:
-    branches: [ main, develop ]
+# on:
+#   push:
+#     branches: [ main, develop ]
+#   pull_request:
+#     branches: [ main, develop ]
 
-jobs:
-  backend-tests:
-    runs-on: ubuntu-latest
+# jobs:
+#   backend-tests:
+#     runs-on: ubuntu-latest
     
-    services:
-      postgres:
-        image: postgres:15
-        env:
-          POSTGRES_PASSWORD: postgres
-          POSTGRES_DB: parcel_tracking_test
-        options: >-
-          --health-cmd pg_isready
-          --health-interval 10s
-          --health-timeout 5s
-          --health-retries 5
-        ports:
-          - 5432:5432
+#     services:
+#       postgres:
+#         image: postgres:15
+#         env:
+#           POSTGRES_PASSWORD: postgres
+#           POSTGRES_DB: parcel_tracking_test
+#         options: >-
+#           --health-cmd pg_isready
+#           --health-interval 10s
+#           --health-timeout 5s
+#           --health-retries 5
+#         ports:
+#           - 5432:5432
       
-      redis:
-        image: redis:7
-        options: >-
-          --health-cmd "redis-cli ping"
-          --health-interval 10s
-          --health-timeout 5s
-          --health-retries 5
-        ports:
-          - 6379:6379
+#       redis:
+#         image: redis:7
+#         options: >-
+#           --health-cmd "redis-cli ping"
+#           --health-interval 10s
+#           --health-timeout 5s
+#           --health-retries 5
+#         ports:
+#           - 6379:6379
 
-    steps:
-    - uses: actions/checkout@v3
+#     steps:
+#     - uses: actions/checkout@v3
 
-    - name: Setup PHP
-      uses: shivammathur/setup-php@v2
-      with:
-        php-version: '8.2'
-        extensions: mbstring, dom, fileinfo, pgsql, redis
-        coverage: xdebug
+#     - name: Setup PHP
+#       uses: shivammathur/setup-php@v2
+#       with:
+#         php-version: '8.2'
+#         extensions: mbstring, dom, fileinfo, pgsql, redis
+#         coverage: xdebug
 
-    - name: Copy .env
-      run: |
-        cd backend
-        php -r "file_exists('.env') || copy('.env.example', '.env');"
+#     - name: Copy .env
+#       run: |
+#         cd backend
+#         php -r "file_exists('.env') || copy('.env.example', '.env');"
 
-    - name: Install Dependencies
-      run: |
-        cd backend
-        composer install -q --no-ansi --no-interaction --no-scripts --no-progress --prefer-dist
+#     - name: Install Dependencies
+#       run: |
+#         cd backend
+#         composer install -q --no-ansi --no-interaction --no-scripts --no-progress --prefer-dist
 
-    - name: Generate key
-      run: |
-        cd backend
-        php artisan key:generate
+#     - name: Generate key
+#       run: |
+#         cd backend
+#         php artisan key:generate
 
-    - name: Directory Permissions
-      run: |
-        cd backend
-        chmod -R 755 storage bootstrap/cache
+#     - name: Directory Permissions
+#       run: |
+#         cd backend
+#         chmod -R 755 storage bootstrap/cache
 
-    - name: Run Database Migrations
-      env:
-        DB_CONNECTION: pgsql
-        DB_HOST: localhost
-        DB_PORT: 5432
-        DB_DATABASE: parcel_tracking_test
-        DB_USERNAME: postgres
-        DB_PASSWORD: postgres
-      run: |
-        cd backend
-        php artisan migrate
+#     - name: Run Database Migrations
+#       env:
+#         DB_CONNECTION: pgsql
+#         DB_HOST: localhost
+#         DB_PORT: 5432
+#         DB_DATABASE: parcel_tracking_test
+#         DB_USERNAME: postgres
+#         DB_PASSWORD: postgres
+#       run: |
+#         cd backend
+#         php artisan migrate
 
-    - name: Execute tests (Unit and Feature tests) via PHPUnit
-      env:
-        DB_CONNECTION: pgsql
-        DB_HOST: localhost
-        DB_PORT: 5432
-        DB_DATABASE: parcel_tracking_test
-        DB_USERNAME: postgres
-        DB_PASSWORD: postgres
-        REDIS_HOST: localhost
-        REDIS_PORT: 6379
-      run: |
-        cd backend
-        vendor/bin/phpunit --coverage-text
+#     - name: Execute tests (Unit and Feature tests) via PHPUnit
+#       env:
+#         DB_CONNECTION: pgsql
+#         DB_HOST: localhost
+#         DB_PORT: 5432
+#         DB_DATABASE: parcel_tracking_test
+#         DB_USERNAME: postgres
+#         DB_PASSWORD: postgres
+#         REDIS_HOST: localhost
+#         REDIS_PORT: 6379
+#       run: |
+#         cd backend
+#         vendor/bin/phpunit --coverage-text
 
-  frontend-tests:
-    runs-on: ubuntu-latest
+#   frontend-tests:
+#     runs-on: ubuntu-latest
 
-    steps:
-    - uses: actions/checkout@v3
+#     steps:
+#     - uses: actions/checkout@v3
 
-    - name: Setup Node.js
-      uses: actions/setup-node@v3
-      with:
-        node-version: '18'
-        cache: 'npm'
-        cache-dependency-path: frontend/package-lock.json
+#     - name: Setup Node.js
+#       uses: actions/setup-node@v3
+#       with:
+#         node-version: '18'
+#         cache: 'npm'
+#         cache-dependency-path: frontend/package-lock.json
 
-    - name: Install dependencies
-      run: |
-        cd frontend
-        npm ci
+#     - name: Install dependencies
+#       run: |
+#         cd frontend
+#         npm ci
 
-    - name: Run linter
-      run: |
-        cd frontend
-        npm run lint
+#     - name: Run linter
+#       run: |
+#         cd frontend
+#         npm run lint
 
-    - name: Run tests
-      run: |
-        cd frontend
-        npm run test
+#     - name: Run tests
+#       run: |
+#         cd frontend
+#         npm run test
 
-    - name: Build application
-      run: |
-        cd frontend
-        npm run build
+#     - name: Build application
+#       run: |
+#         cd frontend
+#         npm run build
 
-  security-scan:
-    runs-on: ubuntu-latest
+#   security-scan:
+#     runs-on: ubuntu-latest
     
-    steps:
-    - uses: actions/checkout@v3
+#     steps:
+#     - uses: actions/checkout@v3
     
-    - name: Run Trivy vulnerability scanner
-      uses: aquasecurity/trivy-action@master
-      with:
-        scan-type: 'fs'
-        scan-ref: '.'
-        format: 'sarif'
-        output: 'trivy-results.sarif'
+#     - name: Run Trivy vulnerability scanner
+#       uses: aquasecurity/trivy-action@master
+#       with:
+#         scan-type: 'fs'
+#         scan-ref: '.'
+#         format: 'sarif'
+#         output: 'trivy-results.sarif'
     
-    - name: Upload Trivy scan results to GitHub Security tab
-      uses: github/codeql-action/upload-sarif@v2
-      if: always()
-      with:
-        sarif_file: 'trivy-results.sarif'
+#     - name: Upload Trivy scan results to GitHub Security tab
+#       uses: github/codeql-action/upload-sarif@v2
+#       if: always()
+#       with:
+#         sarif_file: 'trivy-results.sarif'
 
-  deploy-staging:
-    needs: [backend-tests, frontend-tests]
-    runs-on: ubuntu-latest
-    if: github.ref == 'refs/heads/develop'
+#   deploy-staging:
+#     needs: [backend-tests, frontend-tests]
+#     runs-on: ubuntu-latest
+#     if: github.ref == 'refs/heads/develop'
     
-    steps:
-    - uses: actions/checkout@v3
+#     steps:
+#     - uses: actions/checkout@v3
     
-    - name: Deploy to staging
-      run: |
-        echo "Deploying to staging environment..."
-        # Add deployment scripts here
+#     - name: Deploy to staging
+#       run: |
+#         echo "Deploying to staging environment..."
+#         # Add deployment scripts here
 
-  deploy-production:
-    needs: [backend-tests, frontend-tests, security-scan]
-    runs-on: ubuntu-latest
-    if: github.ref == 'refs/heads/main'
+#   deploy-production:
+#     needs: [backend-tests, frontend-tests, security-scan]
+#     runs-on: ubuntu-latest
+#     if: github.ref == 'refs/heads/main'
     
-    steps:
-    - uses: actions/checkout@v3
+#     steps:
+#     - uses: actions/checkout@v3
     
-    - name: Deploy to production
-      run: |
-        echo "Deploying to production environment..."
-        # Add deployment scripts here
+#     - name: Deploy to production
+#       run: |
+#         echo "Deploying to production environment..."
+#         # Add deployment scripts here

@@ -25,13 +25,13 @@
 
 - [x] 2.2 Write unit tests for data models
 
-
   - Create unit tests for model relationships and scopes
   - Test event deduplication and ordering logic
   - Validate model casting and attribute handling
   - _Requirements: 7.6_
 
-- [ ] 3. Build event ingestion system
+- [x] 3. Build event ingestion system
+
 
   - Implement webhook endpoint for receiving scan events from handhelds and partners
   - Create SFTP batch processing for CSV file uploads
@@ -40,7 +40,7 @@
   - Set up Kafka producer for event streaming
   - _Requirements: 7.1, 7.2, 7.3, 7.4, 7.7_
 
-- [ ] 3.1 Create event ingestion API endpoints
+- [x] 3.1 Create event ingestion API endpoints
 
   - Build REST webhook controller with HMAC signature validation
   - Implement batch CSV upload endpoint with file validation
@@ -48,7 +48,7 @@
   - Create event queuing system with dead letter queue for failures
   - _Requirements: 7.1, 7.2, 7.7_
 
-- [ ] 3.2 Implement event processing pipeline
+- [x] 3.2 Implement event processing pipeline
 
   - Build event normalization service to map partner codes to canonical codes
   - Implement geocoding service for facility location resolution
@@ -56,7 +56,7 @@
   - Add current status computation based on latest event timestamp
   - _Requirements: 7.4, 7.5, 7.6_
 
-- [ ] 3.3 Write integration tests for event ingestion
+- [x] 3.3 Write integration tests for event ingestion
 
   - Test webhook endpoint with various partner formats
   - Validate HMAC signature verification

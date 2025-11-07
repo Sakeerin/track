@@ -22,6 +22,7 @@ class Event extends Model
         'remarks',
         'raw_payload',
         'source',
+        'idempotency_key',
     ];
 
     protected $casts = [

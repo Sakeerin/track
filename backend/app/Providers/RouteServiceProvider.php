@@ -36,6 +36,14 @@ class RouteServiceProvider extends ServiceProvider
             return Limit::perMinute(500)->by($request->user()?->id ?: $request->ip());
         });
 
+        RateLimiter::for('webhook', function (Request $request) {
+            return Limit::perMinute(1000)->by($request->header('X-Partner-ID') ?: $request->ip());
+        });
+
+        RateLimiter::for('batch', function (Request $request) {
+            return Limit::perMinute(10)->by($request->header('X-API-Key') ?: $request->ip());
+        });
+
         $this->routes(function () {
             Route::middleware('api')
                 ->prefix('api')
