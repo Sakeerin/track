@@ -222,4 +222,71 @@ class EventModelTest extends TestCase
         $this->assertEquals('delivered', $shipment->current_status);
         $this->assertEquals($facility->id, $shipment->current_location_id);
     }
+
+    public function test_out_of_order_events_maintain_correct_current_status()
+    {
+        $facility = Facility::factory()->create();
+        $shipment = Shipment::factory()->create(['current_status' => 'created']);
+
+        // Create events out of chronological order
+        $oldEvent = Event::factory()->create([
+            'shipment_id' => $shipment->id,
+            'event_code' => 'PICKUP',
+            'event_time' => now()->subHours(3),
+            'facility_id' => $facility->id,
+        ]);
+
+        $newerEvent = Event::factory()->create([
+            'shipment_id' => $shipment->id,
+            'event_code' => 'DELIVERED',
+            'event_time' => now()->subHours(1),
+            'facility_id' => $facility->id,
+        ]);
+
+        // Current status should be based on the latest event by time, not creation order
+        $shipment->refresh();
+        $this->assertEquals('delivered', $shipment->current_status);
+    }
+
+    public function test_event_deduplication_with_complex_scenarios()
+    {
+        $shipment = Shipment::factory()->create();
+        $eventTime = '2024-12-25 10:00:00';
+        
+        // Create first event
+        Event::factory()->create([
+            'shipment_id' => $shipment->id,
+            'event_id' => 'COMPLEX123',
+            'event_time' => $eventTime,
+        ]);
+
+        // Test duplicate detection with same shipment, event_id, and time
+        $this->assertTrue(Event::isDuplicate(
+            $shipment->id,
+            'COMPLEX123',
+            $eventTime
+        ));
+
+        // Test non-duplicate with different shipment
+        $otherShipment = Shipment::factory()->create();
+        $this->assertFalse(Event::isDuplicate(
+            $otherShipment->id,
+            'COMPLEX123',
+            $eventTime
+        ));
+
+        // Test non-duplicate with different event_id
+        $this->assertFalse(Event::isDuplicate(
+            $shipment->id,
+            'DIFFERENT123',
+            $eventTime
+        ));
+
+        // Test non-duplicate with different time
+        $this->assertFalse(Event::isDuplicate(
+            $shipment->id,
+            'COMPLEX123',
+            '2024-12-25 11:00:00'
+        ));
+    }
 }

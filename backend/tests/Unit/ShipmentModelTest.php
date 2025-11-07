@@ -195,4 +195,72 @@ class ShipmentModelTest extends TestCase
         $this->expectException(\Illuminate\Database\QueryException::class);
         Shipment::factory()->create(['tracking_number' => 'TH1234567890']);
     }
+
+    public function test_latest_event_relationship_returns_most_recent_event()
+    {
+        $shipment = Shipment::factory()->create();
+        
+        $oldEvent = Event::factory()->create([
+            'shipment_id' => $shipment->id,
+            'event_time' => now()->subHours(2),
+        ]);
+        
+        $latestEvent = Event::factory()->create([
+            'shipment_id' => $shipment->id,
+            'event_time' => now()->subHours(1),
+        ]);
+
+        $result = $shipment->latestEvent()->first();
+        
+        $this->assertEquals($latestEvent->id, $result->id);
+        $this->assertNotEquals($oldEvent->id, $result->id);
+    }
+
+    public function test_map_event_code_to_status_handles_all_codes()
+    {
+        $shipment = Shipment::factory()->create();
+        $facility = Facility::factory()->create();
+
+        $testCases = [
+            'PICKUP' => 'picked_up',
+            'IN_TRANSIT' => 'in_transit',
+            'AT_HUB' => 'at_hub',
+            'OUT_FOR_DELIVERY' => 'out_for_delivery',
+            'DELIVERED' => 'delivered',
+            'EXCEPTION' => 'exception',
+            'RETURNED' => 'returned',
+            'UNKNOWN_CODE' => 'unknown',
+        ];
+
+        foreach ($testCases as $eventCode => $expectedStatus) {
+            Event::factory()->create([
+                'shipment_id' => $shipment->id,
+                'event_code' => $eventCode,
+                'facility_id' => $facility->id,
+                'event_time' => now(),
+            ]);
+
+            $shipment->updateCurrentStatus();
+            $this->assertEquals($expectedStatus, $shipment->fresh()->current_status);
+        }
+    }
+
+    public function test_current_location_updates_from_event_location_when_facility_null()
+    {
+        $facility = Facility::factory()->create();
+        $location = Facility::factory()->create();
+        $shipment = Shipment::factory()->create(['current_status' => 'created']);
+
+        // Create event with location_id but no facility_id
+        Event::factory()->create([
+            'shipment_id' => $shipment->id,
+            'event_code' => 'IN_TRANSIT',
+            'facility_id' => null,
+            'location_id' => $location->id,
+        ]);
+
+        $shipment->updateCurrentStatus();
+
+        $this->assertEquals($location->id, $shipment->fresh()->current_location_id);
+    }
 }

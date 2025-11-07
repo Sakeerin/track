@@ -188,7 +188,17 @@ class SubscriptionModelTest extends TestCase
         $subscription = Subscription::factory()->create();
 
         $this->assertNotNull($subscription->unsubscribe_token);
-        $this->assertEquals(100, strlen($subscription->unsubscribe_token));
+        // Factory uses sha256 which generates 64 characters, but model boot method should generate 100
+        // Let's test the model boot method by creating without factory
+        $shipment = Shipment::factory()->create();
+        $newSubscription = Subscription::create([
+            'shipment_id' => $shipment->id,
+            'channel' => 'email',
+            'destination' => 'test@example.com',
+            'events' => ['PICKUP', 'DELIVERED'],
+        ]);
+        
+        $this->assertEquals(100, strlen($newSubscription->unsubscribe_token));
     }
 
     public function test_subscription_preserves_existing_unsubscribe_token_on_creation()

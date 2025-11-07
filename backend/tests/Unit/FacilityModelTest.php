@@ -24,24 +24,27 @@ class FacilityModelTest extends TestCase
             'code' => 'TEST01',
             'name' => 'Test Facility',
             'facility_type' => 'hub',
-            'active' => true, // default value
         ]);
 
-        $this->assertTrue($facility->active);
-        $this->assertEquals('Asia/Bangkok', $facility->timezone);
+        // Check that default values are applied
+        $this->assertTrue($facility->fresh()->active);
+        $this->assertEquals('Asia/Bangkok', $facility->fresh()->timezone);
     }
 
     public function test_facility_casts_coordinates_to_decimal()
     {
         $facility = Facility::factory()->create([
-            'latitude' => '13.7563000',
-            'longitude' => '100.5018000',
+            'latitude' => 13.7563000,
+            'longitude' => 100.5018000,
         ]);
 
-        $this->assertIsFloat($facility->latitude);
-        $this->assertIsFloat($facility->longitude);
-        $this->assertEquals(13.7563, $facility->latitude);
-        $this->assertEquals(100.5018, $facility->longitude);
+        // Laravel casts decimal to string by default, but we can check the values
+        $this->assertEquals('13.75630000', $facility->latitude);
+        $this->assertEquals('100.50180000', $facility->longitude);
+        
+        // Test that they can be used as numeric values
+        $this->assertTrue(is_numeric($facility->latitude));
+        $this->assertTrue(is_numeric($facility->longitude));
     }
 
     public function test_facility_has_origin_shipments_relationship()
@@ -118,5 +121,33 @@ class FacilityModelTest extends TestCase
 
         $this->expectException(\Illuminate\Database\QueryException::class);
         Facility::factory()->create(['code' => 'UNIQUE01']);
+    }
+
+    public function test_facility_has_location_events_relationship()
+    {
+        $facility = Facility::factory()->create();
+        $shipment = Shipment::factory()->create();
+        $event = Event::factory()->create([
+            'shipment_id' => $shipment->id,
+            'location_id' => $facility->id,
+        ]);
+
+        $this->assertTrue($facility->locationEvents->contains($event));
+        $this->assertCount(1, $facility->locationEvents);
+    }
+
+    public function test_facility_default_values_are_applied()
+    {
+        $facility = Facility::create([
+            'code' => 'TEST02',
+            'name' => 'Test Facility 2',
+            'facility_type' => 'depot',
+        ]);
+
+        // Refresh to get values from database including defaults
+        $facility->refresh();
+
+        $this->assertTrue($facility->active);
+        $this->assertEquals('Asia/Bangkok', $facility->timezone);
     }
 }
