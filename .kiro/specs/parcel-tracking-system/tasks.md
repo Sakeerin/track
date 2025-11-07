@@ -12,18 +12,27 @@
   - Set up basic CI/CD pipeline configuration
   - _Requirements: 9.4, 9.5_
 
-- [ ] 2. Implement core data models and database schema
+- [x] 2. Implement core data models and database schema
+
+
+
+
+
   - Create Laravel migrations for shipments, events, facilities, and subscriptions tables
   - Implement Eloquent models with relationships and proper casting
   - Set up database seeders for facilities and test data
   - Configure database indexing strategy for performance
   - _Requirements: 7.6, 8.1_
 
-- [ ] 2.1 Create shipment and event models
+- [x] 2.1 Create shipment and event models
+
+
   - Implement Shipment model with status management and relationships
   - Implement Event model with event ordering and deduplication logic
   - Add model factories for testing data generation
   - _Requirements: 7.6, 8.1_
+
+
 
 - [ ] 2.2 Write unit tests for data models
   - Create unit tests for model relationships and scopes
