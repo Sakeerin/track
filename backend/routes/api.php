@@ -3,6 +3,7 @@
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\Api\EventIngestionController;
+use App\Http\Controllers\Api\TrackingController;
 
 /*
 |--------------------------------------------------------------------------
@@ -18,6 +19,27 @@ use App\Http\Controllers\Api\EventIngestionController;
 Route::middleware('auth:sanctum')->get('/user', function (Request $request) {
     return $request->user();
 });
+
+/*
+|--------------------------------------------------------------------------
+| Public Tracking Routes
+|--------------------------------------------------------------------------
+*/
+
+// Tracking service health check (must be before the wildcard route)
+Route::get('/tracking/health', [TrackingController::class, 'health'])
+    ->name('tracking.health');
+
+// Multi-shipment tracking endpoint
+Route::post('/tracking', [TrackingController::class, 'track'])
+    ->middleware(['throttle:tracking'])
+    ->name('tracking.multi');
+
+// Single shipment tracking endpoint (SEO-friendly)
+Route::get('/tracking/{trackingNumber}', [TrackingController::class, 'trackSingle'])
+    ->middleware(['throttle:tracking'])
+    ->name('tracking.single')
+    ->where('trackingNumber', '[A-Z]{2}[0-9]{10}');
 
 /*
 |--------------------------------------------------------------------------

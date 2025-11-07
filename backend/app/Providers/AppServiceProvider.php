@@ -12,7 +12,11 @@ class AppServiceProvider extends ServiceProvider
      */
     public function register(): void
     {
-        //
+        $this->app->bind(\App\Services\Tracking\TrackingService::class, function ($app) {
+            return new \App\Services\Tracking\TrackingService(
+                $app->make(\App\Services\Tracking\ShipmentFormatter::class)
+            );
+        });
     }
 
     /**

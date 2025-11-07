@@ -65,7 +65,6 @@
 
 - [x] 4. Develop ETA calculation engine
 
-
   - Implement deterministic ETA rules based on lane and service type
   - Build dynamic adjustment logic for holidays, cut-off times, and congestion
   - Create ETA recalculation triggers for specific events
@@ -88,7 +87,8 @@
   - Verify configuration rule application
   - _Requirements: 8.1, 8.2, 8.3_
 
-- [ ] 5. Build public tracking API
+- [x] 5. Build public tracking API
+
 
   - Create tracking controller with rate limiting and validation
   - Implement shipment data service with Redis caching
@@ -97,7 +97,7 @@
   - Implement partial success handling for failed lookups
   - _Requirements: 1.1, 1.2, 1.3, 1.4, 3.1, 3.2, 3.5, 9.1_
 
-- [ ] 5.1 Create tracking endpoints with caching
+- [x] 5.1 Create tracking endpoints with caching
 
   - Build multi-shipment tracking API with input validation
   - Implement Redis caching layer for shipment data
@@ -106,7 +106,7 @@
   - Handle partial failures with appropriate error responses
   - _Requirements: 1.1, 1.2, 1.3, 3.1, 3.5, 9.1_
 
-- [ ] 5.2 Implement tracking data formatting
+- [x] 5.2 Implement tracking data formatting
 
   - Build shipment response formatter with timeline data
   - Add progress milestone calculation (pickup → delivery)
@@ -114,7 +114,7 @@
   - Create location data formatting for map integration
   - _Requirements: 1.4, 1.5, 1.6, 1.7_
 
-- [ ] 5.3 Write API integration tests
+- [x] 5.3 Write API integration tests
 
   - Test multi-shipment tracking with various scenarios
   - Validate rate limiting and error responses
@@ -122,7 +122,7 @@
   - Verify partial success response formatting
   - _Requirements: 1.1, 1.2, 3.5, 9.1_
 
-- [ ] 6. Develop notification system
+- [x] 6. Develop notification system
 
   - Implement notification service with multiple channels (email, SMS, LINE, webhook)
   - Build subscription management with consent tracking
