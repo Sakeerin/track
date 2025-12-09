@@ -60,3 +60,30 @@ Route::post('/events/batch', [EventIngestionController::class, 'processBatch'])
 // Health check endpoint
 Route::get('/events/health', [EventIngestionController::class, 'health'])
     ->name('events.health');
+
+/*
+|--------------------------------------------------------------------------
+| Notification Subscription Routes
+|--------------------------------------------------------------------------
+*/
+
+use App\Http\Controllers\Api\SubscriptionController;
+
+// Create notification subscription
+Route::post('/subscriptions', [SubscriptionController::class, 'store'])
+    ->middleware(['throttle:api'])
+    ->name('subscriptions.store');
+
+// Get subscriptions for a shipment
+Route::get('/subscriptions', [SubscriptionController::class, 'index'])
+    ->middleware(['throttle:api'])
+    ->name('subscriptions.index');
+
+// Update subscription preferences
+Route::put('/subscriptions/{id}', [SubscriptionController::class, 'update'])
+    ->middleware(['throttle:api'])
+    ->name('subscriptions.update');
+
+// Unsubscribe endpoint (also available via web route)
+Route::get('/subscriptions/unsubscribe/{token}', [SubscriptionController::class, 'unsubscribe'])
+    ->name('api.unsubscribe');

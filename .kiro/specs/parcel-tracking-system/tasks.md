@@ -131,7 +131,12 @@
   - Implement unsubscribe mechanism with token-based links
   - _Requirements: 4.1, 8.4, 8.5, 8.6, 8.7_
 
-- [ ] 6.1 Create notification channels and templates
+- [x] 6.1 Create notification channels and templates
+
+
+
+
+
 
   - Build email notification service with template rendering
   - Implement SMS gateway integration with delivery tracking

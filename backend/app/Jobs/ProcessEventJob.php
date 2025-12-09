@@ -163,13 +163,14 @@ class ProcessEventJob implements ShouldQueue
      */
     private function dispatchFollowUpJobs(Shipment $shipment, Event $event, array $orderingResult): void
     {
-        // These jobs would be implemented in later tasks
-        // For now, just log the intent
-        Log::info('Would dispatch follow-up jobs', [
+        // Dispatch notification job for this event
+        SendNotificationJob::dispatch($event)->onQueue('notifications');
+
+        Log::info('Dispatched follow-up jobs', [
             'shipment_id' => $shipment->id,
             'event_code' => $event->event_code,
             'status_changed' => $orderingResult['status_changed'],
-            'jobs' => ['UpdateETAJob', 'SendNotificationJob']
+            'jobs' => ['SendNotificationJob']
         ]);
 
         // If there are sequence anomalies, we might want to alert operations
