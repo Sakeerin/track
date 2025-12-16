@@ -87,3 +87,23 @@ Route::put('/subscriptions/{id}', [SubscriptionController::class, 'update'])
 // Unsubscribe endpoint (also available via web route)
 Route::get('/subscriptions/unsubscribe/{token}', [SubscriptionController::class, 'unsubscribe'])
     ->name('api.unsubscribe');
+
+// Get subscription analytics
+Route::get('/subscriptions/{id}/analytics', [SubscriptionController::class, 'analytics'])
+    ->middleware(['throttle:api'])
+    ->name('subscriptions.analytics');
+
+// Update notification preferences
+Route::put('/subscriptions/{id}/preferences', [SubscriptionController::class, 'updatePreferences'])
+    ->middleware(['throttle:api'])
+    ->name('subscriptions.preferences');
+
+// Get delivery tracking for a shipment
+Route::get('/subscriptions/delivery-tracking', [SubscriptionController::class, 'deliveryTracking'])
+    ->middleware(['throttle:api'])
+    ->name('subscriptions.delivery-tracking');
+
+// Mark notification as delivered (webhook callback)
+Route::post('/notifications/{logId}/delivered', [SubscriptionController::class, 'markDelivered'])
+    ->middleware(['throttle:api'])
+    ->name('notifications.delivered');

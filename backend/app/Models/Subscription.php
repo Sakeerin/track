@@ -6,6 +6,7 @@ use Illuminate\Database\Eloquent\Concerns\HasUuids;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Support\Str;
 
 class Subscription extends Model
@@ -37,6 +38,14 @@ class Subscription extends Model
     public function shipment(): BelongsTo
     {
         return $this->belongsTo(Shipment::class);
+    }
+
+    /**
+     * Get notification logs for this subscription
+     */
+    public function notificationLogs(): HasMany
+    {
+        return $this->hasMany(NotificationLog::class);
     }
 
     /**
@@ -96,6 +105,65 @@ class Subscription extends Model
         }
         
         return false;
+    }
+
+    /**
+     * Get last notification time for this subscription
+     */
+    public function getLastNotificationTime(): ?string
+    {
+        $lastLog = $this->notificationLogs()
+            ->where('status', 'sent')
+            ->orderBy('sent_at', 'desc')
+            ->first();
+        
+        return $lastLog ? $lastLog->sent_at : null;
+    }
+
+    /**
+     * Check if subscription should be throttled
+     * Max 1 notification per 2 hours unless critical event
+     */
+    public function shouldThrottle(string $eventCode): bool
+    {
+        $criticalEvents = ['DeliveryAttempted', 'Delivered', 'ExceptionRaised', 'Returned'];
+        
+        // Don't throttle critical events
+        if (in_array($eventCode, $criticalEvents)) {
+            return false;
+        }
+
+        // Check last notification time
+        $lastNotification = $this->notificationLogs()
+            ->where('status', 'sent')
+            ->orderBy('sent_at', 'desc')
+            ->first();
+
+        if (!$lastNotification) {
+            return false;
+        }
+
+        // Throttle if last notification was within 2 hours
+        $twoHoursAgo = now()->subHours(2);
+        return $lastNotification->sent_at > $twoHoursAgo;
+    }
+
+    /**
+     * Get notification statistics for this subscription
+     */
+    public function getStatistics(): array
+    {
+        $logs = $this->notificationLogs;
+
+        return [
+            'total_sent' => $logs->where('status', 'sent')->count(),
+            'total_failed' => $logs->where('status', 'failed')->count(),
+            'total_throttled' => $logs->where('status', 'throttled')->count(),
+            'last_sent_at' => $this->getLastNotificationTime(),
+            'delivery_rate' => $logs->where('status', 'sent')->count() > 0 
+                ? ($logs->whereNotNull('delivered_at')->count() / $logs->where('status', 'sent')->count()) * 100 
+                : 0,
+        ];
     }
 
     /**

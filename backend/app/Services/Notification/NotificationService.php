@@ -3,6 +3,7 @@
 namespace App\Services\Notification;
 
 use App\Models\Event;
+use App\Models\NotificationLog;
 use App\Models\Subscription;
 use Illuminate\Support\Facades\Log;
 
@@ -64,10 +65,24 @@ class NotificationService
             }
 
             // Check throttling
-            if ($this->shouldThrottle($subscription, $event)) {
+            if ($subscription->shouldThrottle($event->event_code)) {
                 Log::info("Notification throttled", [
                     'subscription_id' => $subscription->id,
                     'event_code' => $event->event_code,
+                ]);
+
+                // Log throttled notification
+                NotificationLog::create([
+                    'subscription_id' => $subscription->id,
+                    'event_id' => $event->id,
+                    'channel' => $subscription->channel,
+                    'destination' => $subscription->destination,
+                    'status' => 'throttled',
+                    'sent_at' => now(),
+                    'metadata' => [
+                        'event_code' => $event->event_code,
+                        'reason' => 'throttled_by_rate_limit',
+                    ],
                 ]);
                 
                 return [
@@ -83,6 +98,26 @@ class NotificationService
 
             // Send through channel
             $result = $channel->send($subscription->destination, $data);
+
+            // Log notification attempt
+            $logData = [
+                'subscription_id' => $subscription->id,
+                'event_id' => $event->id,
+                'channel' => $subscription->channel,
+                'destination' => $subscription->destination,
+                'status' => $result['success'] ? 'sent' : 'failed',
+                'sent_at' => now(),
+                'metadata' => [
+                    'event_code' => $event->event_code,
+                    'tracking_number' => $event->shipment->tracking_number,
+                ],
+            ];
+
+            if (!$result['success']) {
+                $logData['error_message'] = $result['error'] ?? 'Unknown error';
+            }
+
+            NotificationLog::create($logData);
 
             Log::info("Notification sent", [
                 'subscription_id' => $subscription->id,
@@ -101,6 +136,20 @@ class NotificationService
                 'subscription_id' => $subscription->id,
                 'channel' => $subscription->channel,
                 'error' => $e->getMessage(),
+            ]);
+
+            // Log failed notification
+            NotificationLog::create([
+                'subscription_id' => $subscription->id,
+                'event_id' => $event->id,
+                'channel' => $subscription->channel,
+                'destination' => $subscription->destination,
+                'status' => 'failed',
+                'error_message' => $e->getMessage(),
+                'sent_at' => now(),
+                'metadata' => [
+                    'event_code' => $event->event_code,
+                ],
             ]);
 
             return [
@@ -131,23 +180,7 @@ class NotificationService
         }
     }
 
-    /**
-     * Check if notification should be throttled
-     * Max 1 notification per 2 hours unless critical event
-     */
-    protected function shouldThrottle(Subscription $subscription, Event $event): bool
-    {
-        $criticalEvents = ['DeliveryAttempted', 'Delivered', 'ExceptionRaised', 'Returned'];
-        
-        // Don't throttle critical events
-        if (in_array($event->event_code, $criticalEvents)) {
-            return false;
-        }
 
-        // Check last notification time (would need to track this in a separate table)
-        // For now, return false - implement throttling tracking in future iteration
-        return false;
-    }
 
     /**
      * Prepare notification data with template rendering
