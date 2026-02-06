@@ -14,7 +14,26 @@
     "submit": "Track Parcels",
     "results": "Tracking Results",
     "noResults": "No tracking information found",
-    "error": "An error occurred while tracking your parcels"
+    "error": "An error occurred while tracking your parcels",
+    "form": {
+      "label": "Tracking Numbers",
+      "placeholder": "Enter tracking numbers (one per line or separated by commas)",
+      "maxNumbers": "Max {{count}}",
+      "submit": "Track Parcels",
+      "processing": "Processing...",
+      "validNumbers": "{{count}} valid tracking number found",
+      "validNumbers_plural": "{{count}} valid tracking numbers found",
+      "preview": "Preview:",
+      "noValidNumbers": "No valid tracking numbers found",
+      "hasErrors": "Please fix errors before submitting",
+      "noNumbers": "Please enter valid tracking numbers",
+      "invalidFormat": "Some tracking numbers have invalid format",
+      "tooManyNumbers": "Maximum {{max}} tracking numbers allowed",
+      "duplicatesRemoved": "Duplicate tracking numbers were removed"
+    },
+    "viewMode": "View:",
+    "cardView": "Cards",
+    "tableView": "Table"
   },
   "status": {
     "created": "Created",
@@ -42,10 +61,77 @@
     "clear": "Clear",
     "language": "Language"
   },
+  "shipment": {
+    "reference": "Ref",
+    "origin": "Origin",
+    "destination": "Destination",
+    "estimatedDelivery": "Estimated Delivery",
+    "currentLocation": "Current Location",
+    "latestUpdate": "Latest Update",
+    "showTimeline": "Show Full Timeline",
+    "hideTimeline": "Hide Timeline",
+    "showUTC": "Show UTC",
+    "showLocalTime": "Show Local Time",
+    "mapPlaceholder": "Map view will be available soon"
+  },
+  "milestone": {
+    "created": "Order Created",
+    "picked_up": "Picked Up",
+    "in_transit": "In Transit",
+    "at_hub": "At Destination Hub",
+    "out_for_delivery": "Out for Delivery",
+    "delivered": "Delivered"
+  },
+  "progress": {
+    "title": "Shipment Progress",
+    "ariaLabel": "Shipment progress: {{percent}}% complete",
+    "exception": "Shipment has encountered an issue",
+    "returned": "Shipment has been returned",
+    "cancelled": "Shipment has been cancelled"
+  },
+  "timeline": {
+    "noEvents": "No tracking events available"
+  },
+  "exception": {
+    "title": "Shipment Issue",
+    "guidance": "What to do",
+    "showMore": "Show More",
+    "showLess": "Show Less",
+    "contactSupport": "Contact Support"
+  },
+  "bulkView": {
+    "noShipments": "No shipments found",
+    "noShipmentsDescription": "Try adjusting your search or filter criteria.",
+    "search": "Search shipments",
+    "searchPlaceholder": "Search by tracking number, reference, or location...",
+    "filterByStatus": "Filter by status",
+    "allStatuses": "All Statuses",
+    "exportCSV": "Export CSV",
+    "showingResults": "Showing {{count}} of {{total}} shipments",
+    "headers": {
+      "trackingNumber": "Tracking Number",
+      "status": "Status",
+      "serviceType": "Service",
+      "route": "Route",
+      "currentLocation": "Current Location",
+      "eta": "ETA",
+      "lastUpdate": "Last Update",
+      "origin": "Origin",
+      "destination": "Destination",
+      "estimatedDelivery": "Estimated Delivery"
+    }
+  },
   "footer": {
     "copyright": "© 2024 Parcel Tracking System. All rights reserved.",
     "privacy": "Privacy Policy",
     "terms": "Terms of Service",
     "contact": "Contact Us"
+  },
+  "map": {
+    "title": "Shipment Route",
+    "events": "Events",
+    "noLocationData": "No Location Data Available",
+    "noLocationDataDescription": "Location information is not available for this shipment.",
+    "attribution": "Map data © OpenStreetMap contributors"
   }
 }

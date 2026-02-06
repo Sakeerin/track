@@ -14,7 +14,25 @@
     "submit": "ติดตามพัสดุ",
     "results": "ผลการติดตาม",
     "noResults": "ไม่พบข้อมูลการติดตาม",
-    "error": "เกิดข้อผิดพลาดในการติดตามพัสดุของคุณ"
+    "error": "เกิดข้อผิดพลาดในการติดตามพัสดุของคุณ",
+    "form": {
+      "label": "หมายเลขติดตาม",
+      "placeholder": "ป้อนหมายเลขติดตาม (หนึ่งหมายเลขต่อบรรทัด หรือคั่นด้วยเครื่องหมายจุลภาค)",
+      "maxNumbers": "สูงสุด {{count}} หมายเลข",
+      "submit": "ติดตามพัสดุ",
+      "processing": "กำลังประมวลผล...",
+      "validNumbers": "พบหมายเลขติดตามที่ถูกต้อง {{count}} หมายเลข",
+      "preview": "ตัวอย่าง:",
+      "noValidNumbers": "ไม่พบหมายเลขติดตามที่ถูกต้อง",
+      "hasErrors": "กรุณาแก้ไขข้อผิดพลาดก่อนส่ง",
+      "noNumbers": "กรุณาป้อนหมายเลขติดตามที่ถูกต้อง",
+      "invalidFormat": "หมายเลขติดตามบางหมายเลขมีรูปแบบไม่ถูกต้อง",
+      "tooManyNumbers": "อนุญาตให้ป้อนหมายเลขติดตามได้สูงสุด {{max}} หมายเลข",
+      "duplicatesRemoved": "หมายเลขติดตามที่ซ้ำกันถูกลบออกแล้ว"
+    },
+    "viewMode": "มุมมอง:",
+    "cardView": "การ์ด",
+    "tableView": "ตาราง"
   },
   "status": {
     "created": "สร้างรายการ",
@@ -42,10 +60,77 @@
     "clear": "ล้าง",
     "language": "ภาษา"
   },
+  "shipment": {
+    "reference": "อ้างอิง",
+    "origin": "ต้นทาง",
+    "destination": "ปลายทาง",
+    "estimatedDelivery": "กำหนดส่งโดยประมาณ",
+    "currentLocation": "ตำแหน่งปัจจุบัน",
+    "latestUpdate": "อัปเดตล่าสุด",
+    "showTimeline": "แสดงไทม์ไลน์ทั้งหมด",
+    "hideTimeline": "ซ่อนไทม์ไลน์",
+    "showUTC": "แสดงเวลา UTC",
+    "showLocalTime": "แสดงเวลาท้องถิ่น",
+    "mapPlaceholder": "แผนที่จะพร้อมใช้งานเร็วๆ นี้"
+  },
+  "milestone": {
+    "created": "สร้างรายการ",
+    "picked_up": "รับพัสดุแล้ว",
+    "in_transit": "อยู่ระหว่างขนส่ง",
+    "at_hub": "ถึงศูนย์คัดแยกปลายทาง",
+    "out_for_delivery": "ออกจัดส่ง",
+    "delivered": "จัดส่งสำเร็จ"
+  },
+  "progress": {
+    "title": "ความคืบหน้าการจัดส่ง",
+    "ariaLabel": "ความคืบหน้าการจัดส่ง: {{percent}}% เสร็จสิ้น",
+    "exception": "การจัดส่งมีปัญหา",
+    "returned": "พัสดุถูกส่งคืน",
+    "cancelled": "การจัดส่งถูกยกเลิก"
+  },
+  "timeline": {
+    "noEvents": "ไม่มีข้อมูลการติดตาม"
+  },
+  "exception": {
+    "title": "ปัญหาการจัดส่ง",
+    "guidance": "แนวทางแก้ไข",
+    "showMore": "แสดงเพิ่มเติม",
+    "showLess": "แสดงน้อยลง",
+    "contactSupport": "ติดต่อฝ่ายสนับสนุน"
+  },
+  "bulkView": {
+    "noShipments": "ไม่พบพัสดุ",
+    "noShipmentsDescription": "ลองปรับเงื่อนไขการค้นหาหรือตัวกรอง",
+    "search": "ค้นหาพัสดุ",
+    "searchPlaceholder": "ค้นหาด้วยหมายเลขติดตาม อ้างอิง หรือสถานที่...",
+    "filterByStatus": "กรองตามสถานะ",
+    "allStatuses": "ทุกสถานะ",
+    "exportCSV": "ส่งออก CSV",
+    "showingResults": "แสดง {{count}} จาก {{total}} พัสดุ",
+    "headers": {
+      "trackingNumber": "หมายเลขติดตาม",
+      "status": "สถานะ",
+      "serviceType": "บริการ",
+      "route": "เส้นทาง",
+      "currentLocation": "ตำแหน่งปัจจุบัน",
+      "eta": "กำหนดส่ง",
+      "lastUpdate": "อัปเดตล่าสุด",
+      "origin": "ต้นทาง",
+      "destination": "ปลายทาง",
+      "estimatedDelivery": "กำหนดส่งโดยประมาณ"
+    }
+  },
   "footer": {
     "copyright": "© 2024 ระบบติดตามพัสดุ สงวนลิขสิทธิ์",
     "privacy": "นโยบายความเป็นส่วนตัว",
     "terms": "เงื่อนไขการใช้งาน",
     "contact": "ติดต่อเรา"
+  },
+  "map": {
+    "title": "เส้นทางการจัดส่ง",
+    "events": "เหตุการณ์",
+    "noLocationData": "ไม่มีข้อมูลตำแหน่ง",
+    "noLocationDataDescription": "ไม่มีข้อมูลตำแหน่งสำหรับพัสดุนี้",
+    "attribution": "ข้อมูลแผนที่ © ผู้ร่วมสร้าง OpenStreetMap"
   }
 }
