@@ -139,6 +139,13 @@ class Event extends Model
         static::created(function ($event) {
             $event->shipment->updateCurrentStatus();
             
+            // Invalidate cache for this shipment
+            $trackingService = app(\App\Services\Tracking\TrackingService::class);
+            $shipment = $event->shipment;
+            if ($shipment && $shipment->tracking_number) {
+                $trackingService->invalidateCache($shipment->tracking_number);
+            }
+            
             // Trigger ETA recalculation if needed
             $etaService = app(\App\Services\ETA\ETACalculationService::class);
             if ($etaService->shouldRecalculateETA($event)) {

@@ -15,6 +15,9 @@ class TrackingApiTest extends TestCase
 {
     use RefreshDatabase;
 
+    protected Facility $originFacility;
+    protected Facility $destinationFacility;
+
     protected function setUp(): void
     {
         parent::setUp();

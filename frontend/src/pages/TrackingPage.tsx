@@ -1,21 +1,30 @@
-import React, { useState } from 'react';
+import React, { useState, useCallback } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useParams } from 'react-router-dom';
 import TrackingForm from '../components/tracking/TrackingForm';
 import ShipmentCard from '../components/tracking/ShipmentCard';
 import BulkView from '../components/tracking/BulkView';
 import { SkeletonCard } from '../components/common/SkeletonLoader';
-import { useTracking, useSingleTracking, useTrackingHistory } from '../hooks/useTracking';
+import { 
+  useTracking, 
+  useSingleTracking, 
+  useTrackingHistory,
+  useTrackingPreferences,
+  usePrefetchShipments 
+} from '../hooks/useTracking';
 
 type ViewMode = 'cards' | 'table';
 
 const TrackingPage: React.FC = () => {
   const { t } = useTranslation();
   const { trackingNumber } = useParams<{ trackingNumber?: string }>();
-  const { addToHistory } = useTrackingHistory();
+  const { addToHistory, getHistory, isEnabled: historyEnabled } = useTrackingHistory();
+  const { preferences, toggleLocalCache, toggleHistory, clearLocalCache } = useTrackingPreferences();
+  const { prefetch } = usePrefetchShipments();
   
   const [hasSubmitted, setHasSubmitted] = useState(false);
   const [viewMode, setViewMode] = useState<ViewMode>('cards');
+  const [showSettings, setShowSettings] = useState(false);
   
   // For single tracking number from URL
   const singleTracking = useSingleTracking(trackingNumber || '', {
@@ -27,11 +36,18 @@ const TrackingPage: React.FC = () => {
     enabled: hasSubmitted && !trackingNumber,
   });
 
-  const handleTrackingSubmit = async (trackingNumbers: string[]) => {
+  const handleTrackingSubmit = useCallback(async (trackingNumbers: string[]) => {
     setHasSubmitted(true);
-    addToHistory(trackingNumbers);
+    if (historyEnabled) {
+      addToHistory(trackingNumbers);
+    }
     await multiTracking.trackShipments(trackingNumbers);
-  };
+  }, [historyEnabled, addToHistory, multiTracking]);
+
+  // Prefetch on hover for history items
+  const handleHistoryItemHover = useCallback((trackingNumbers: string[]) => {
+    prefetch(trackingNumbers);
+  }, [prefetch]);
 
   const isLoading = trackingNumber ? singleTracking.isLoading : multiTracking.isLoading;
   const isError = trackingNumber ? singleTracking.isError : multiTracking.isError;
@@ -41,6 +57,7 @@ const TrackingPage: React.FC = () => {
     : multiTracking.shipments;
 
   const showViewToggle = !trackingNumber && shipments.length > 1;
+  const history = getHistory();
 
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
@@ -62,6 +79,97 @@ const TrackingPage: React.FC = () => {
               isLoading={isLoading}
               maxNumbers={20}
             />
+            
+            {/* Recent History */}
+            {historyEnabled && history.length > 0 && (
+              <div className="mt-4 pt-4 border-t border-gray-200">
+                <h3 className="text-sm font-medium text-gray-700 mb-2">
+                  {t('tracking.recentSearches', 'Recent Searches')}
+                </h3>
+                <div className="flex flex-wrap gap-2">
+                  {history.slice(0, 5).map((num) => (
+                    <button
+                      key={num}
+                      type="button"
+                      onClick={() => handleTrackingSubmit([num])}
+                      onMouseEnter={() => handleHistoryItemHover([num])}
+                      className="text-xs px-2 py-1 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded transition-colors"
+                    >
+                      {num}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
+            
+            {/* Settings Toggle */}
+            <div className="mt-4">
+              <button
+                type="button"
+                onClick={() => setShowSettings(!showSettings)}
+                className="text-sm text-gray-500 hover:text-gray-700 flex items-center"
+              >
+                <svg className="w-4 h-4 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                </svg>
+                {t('tracking.cacheSettings', 'Cache Settings')}
+              </button>
+              
+              {showSettings && (
+                <div className="mt-3 p-3 bg-gray-50 rounded-lg space-y-3">
+                  <div className="flex items-center justify-between">
+                    <label className="text-sm text-gray-700">
+                      {t('tracking.enableLocalCache', 'Enable local caching')}
+                    </label>
+                    <button
+                      type="button"
+                      onClick={toggleLocalCache}
+                      className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
+                        preferences.enableLocalCache ? 'bg-blue-600' : 'bg-gray-200'
+                      }`}
+                      role="switch"
+                      aria-checked={preferences.enableLocalCache}
+                    >
+                      <span
+                        className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
+                          preferences.enableLocalCache ? 'translate-x-6' : 'translate-x-1'
+                        }`}
+                      />
+                    </button>
+                  </div>
+                  
+                  <div className="flex items-center justify-between">
+                    <label className="text-sm text-gray-700">
+                      {t('tracking.enableHistory', 'Enable search history')}
+                    </label>
+                    <button
+                      type="button"
+                      onClick={toggleHistory}
+                      className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
+                        preferences.enableHistory ? 'bg-blue-600' : 'bg-gray-200'
+                      }`}
+                      role="switch"
+                      aria-checked={preferences.enableHistory}
+                    >
+                      <span
+                        className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
+                          preferences.enableHistory ? 'translate-x-6' : 'translate-x-1'
+                        }`}
+                      />
+                    </button>
+                  </div>
+                  
+                  <button
+                    type="button"
+                    onClick={clearLocalCache}
+                    className="text-sm text-red-600 hover:text-red-800"
+                  >
+                    {t('tracking.clearCache', 'Clear local cache')}
+                  </button>
+                </div>
+              )}
+            </div>
           </div>
         </div>
       )}

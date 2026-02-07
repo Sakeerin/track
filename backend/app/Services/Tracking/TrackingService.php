@@ -6,15 +6,29 @@ use App\Models\Shipment;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Redis;
 
 class TrackingService
 {
-    private const CACHE_TTL = 30; // 30 seconds as per requirements
-    private const CACHE_PREFIX = 'shipment:';
+    private int $statusTtl;
+    private int $timelineTtl;
+    private int $notFoundTtl;
+    private string $cachePrefix;
+    private string $timelinePrefix;
+    private bool $metricsEnabled;
+    private string $metricsPrefix;
 
     public function __construct(
         private ShipmentFormatter $formatter
-    ) {}
+    ) {
+        $this->statusTtl = config('cache.shipment.status_ttl', 30);
+        $this->timelineTtl = config('cache.shipment.timeline_ttl', 60);
+        $this->notFoundTtl = config('cache.shipment.not_found_ttl', 10);
+        $this->cachePrefix = config('cache.shipment.prefix', 'shipment:');
+        $this->timelinePrefix = config('cache.shipment.timeline_prefix', 'shipment_timeline:');
+        $this->metricsEnabled = config('cache.metrics.enabled', true);
+        $this->metricsPrefix = config('cache.metrics.prefix', 'cache_metrics:');
+    }
 
     /**
      * Get multiple shipments by tracking numbers with caching
@@ -23,6 +37,8 @@ class TrackingService
     {
         $results = [];
         $uncachedNumbers = [];
+        $cacheHits = 0;
+        $cacheMisses = 0;
 
         // Check cache first
         foreach ($trackingNumbers as $trackingNumber) {
@@ -31,33 +47,31 @@ class TrackingService
             
             if ($cached !== null) {
                 $results[$trackingNumber] = $cached;
+                $cacheHits++;
             } else {
                 $uncachedNumbers[] = $trackingNumber;
+                $cacheMisses++;
             }
+        }
+
+        // Record cache metrics
+        if ($this->metricsEnabled) {
+            $this->recordCacheMetrics($cacheHits, $cacheMisses);
         }
 
         // Fetch uncached shipments from database
         if (!empty($uncachedNumbers)) {
-            $shipments = Shipment::with([
-                'events' => function ($query) {
-                    $query->with(['facility', 'location'])
-                          ->orderBy('event_time', 'desc');
-                },
-                'originFacility',
-                'destinationFacility',
-                'currentLocation'
-            ])
-            ->whereIn('tracking_number', $uncachedNumbers)
-            ->get()
-            ->keyBy('tracking_number');
+            $shipments = $this->fetchShipmentsFromDatabase($uncachedNumbers);
 
             // Cache the results and add to response
             foreach ($uncachedNumbers as $trackingNumber) {
                 $shipment = $shipments->get($trackingNumber);
                 $formattedData = $shipment ? $this->formatShipmentData($shipment) : null;
                 
-                // Cache both found and not found results
-                Cache::put($this->getCacheKey($trackingNumber), $formattedData, self::CACHE_TTL);
+                // Use different TTL for found vs not found
+                $ttl = $formattedData ? $this->statusTtl : $this->notFoundTtl;
+                
+                Cache::put($this->getCacheKey($trackingNumber), $formattedData, $ttl);
                 $results[$trackingNumber] = $formattedData;
             }
         }
@@ -75,6 +89,50 @@ class TrackingService
     }
 
     /**
+     * Fetch shipments from database with eager loading
+     */
+    private function fetchShipmentsFromDatabase(array $trackingNumbers): Collection
+    {
+        return Shipment::with([
+            'events' => function ($query) {
+                $query->with(['facility', 'location'])
+                      ->orderBy('event_time', 'desc');
+            },
+            'originFacility',
+            'destinationFacility',
+            'currentLocation'
+        ])
+        ->whereIn('tracking_number', $trackingNumbers)
+        ->get()
+        ->keyBy('tracking_number');
+    }
+
+    /**
+     * Get shipment timeline with separate caching
+     */
+    public function getShipmentTimeline(string $trackingNumber): ?array
+    {
+        $cacheKey = $this->getTimelineCacheKey($trackingNumber);
+        
+        return Cache::remember($cacheKey, $this->timelineTtl, function () use ($trackingNumber) {
+            $shipment = Shipment::with([
+                'events' => function ($query) {
+                    $query->with(['facility', 'location'])
+                          ->orderBy('event_time', 'desc');
+                }
+            ])
+            ->where('tracking_number', $trackingNumber)
+            ->first();
+
+            if (!$shipment) {
+                return null;
+            }
+
+            return $this->formatter->formatTimeline($shipment->events);
+        });
+    }
+
+    /**
      * Format shipment data for API response
      */
     private function formatShipmentData(Shipment $shipment): array
@@ -87,7 +145,15 @@ class TrackingService
      */
     private function getCacheKey(string $trackingNumber): string
     {
-        return self::CACHE_PREFIX . $trackingNumber;
+        return $this->cachePrefix . $trackingNumber;
+    }
+
+    /**
+     * Get timeline cache key for tracking number
+     */
+    private function getTimelineCacheKey(string $trackingNumber): string
+    {
+        return $this->timelinePrefix . $trackingNumber;
     }
 
     /**
@@ -96,7 +162,146 @@ class TrackingService
     public function invalidateCache(string $trackingNumber): void
     {
         Cache::forget($this->getCacheKey($trackingNumber));
+        Cache::forget($this->getTimelineCacheKey($trackingNumber));
         Log::info('Cache invalidated for tracking number', ['tracking_number' => $trackingNumber]);
+    }
+
+    /**
+     * Invalidate cache for multiple tracking numbers
+     */
+    public function invalidateCacheForMany(array $trackingNumbers): void
+    {
+        foreach ($trackingNumbers as $trackingNumber) {
+            Cache::forget($this->getCacheKey($trackingNumber));
+            Cache::forget($this->getTimelineCacheKey($trackingNumber));
+        }
+        Log::info('Cache invalidated for multiple tracking numbers', ['count' => count($trackingNumbers)]);
+    }
+
+    /**
+     * Warm cache for frequently accessed shipments
+     */
+    public function warmCache(): void
+    {
+        if (!config('cache.shipment.warm_cache', true)) {
+            return;
+        }
+
+        $count = config('cache.shipment.warm_cache_count', 100);
+        
+        // Get recently accessed shipments that are still active
+        $shipments = Shipment::with([
+            'events' => function ($query) {
+                $query->with(['facility', 'location'])
+                      ->orderBy('event_time', 'desc');
+            },
+            'originFacility',
+            'destinationFacility',
+            'currentLocation'
+        ])
+        ->whereNotIn('current_status', ['delivered', 'returned'])
+        ->orderBy('updated_at', 'desc')
+        ->limit($count)
+        ->get();
+
+        foreach ($shipments as $shipment) {
+            $formattedData = $this->formatShipmentData($shipment);
+            Cache::put($this->getCacheKey($shipment->tracking_number), $formattedData, $this->statusTtl);
+        }
+
+        Log::info('Cache warmed for active shipments', ['count' => $shipments->count()]);
+    }
+
+    /**
+     * Prefetch shipments into cache
+     */
+    public function prefetchShipments(array $trackingNumbers): void
+    {
+        $uncachedNumbers = [];
+
+        foreach ($trackingNumbers as $trackingNumber) {
+            $cacheKey = $this->getCacheKey($trackingNumber);
+            if (!Cache::has($cacheKey)) {
+                $uncachedNumbers[] = $trackingNumber;
+            }
+        }
+
+        if (empty($uncachedNumbers)) {
+            return;
+        }
+
+        $shipments = $this->fetchShipmentsFromDatabase($uncachedNumbers);
+
+        foreach ($uncachedNumbers as $trackingNumber) {
+            $shipment = $shipments->get($trackingNumber);
+            $formattedData = $shipment ? $this->formatShipmentData($shipment) : null;
+            $ttl = $formattedData ? $this->statusTtl : $this->notFoundTtl;
+            Cache::put($this->getCacheKey($trackingNumber), $formattedData, $ttl);
+        }
+
+        Log::info('Shipments prefetched into cache', ['count' => count($uncachedNumbers)]);
+    }
+
+    /**
+     * Record cache metrics
+     */
+    private function recordCacheMetrics(int $hits, int $misses): void
+    {
+        try {
+            $redis = Redis::connection();
+            $timestamp = now()->format('Y-m-d-H');
+            
+            $redis->hincrby($this->metricsPrefix . 'hourly:' . $timestamp, 'hits', $hits);
+            $redis->hincrby($this->metricsPrefix . 'hourly:' . $timestamp, 'misses', $misses);
+            $redis->hincrby($this->metricsPrefix . 'hourly:' . $timestamp, 'requests', $hits + $misses);
+            
+            // Set expiry for hourly metrics (48 hours)
+            $redis->expire($this->metricsPrefix . 'hourly:' . $timestamp, 172800);
+        } catch (\Exception $e) {
+            Log::warning('Failed to record cache metrics', ['error' => $e->getMessage()]);
+        }
+    }
+
+    /**
+     * Get cache metrics
+     */
+    public function getCacheMetrics(): array
+    {
+        try {
+            $redis = Redis::connection();
+            $currentHour = now()->format('Y-m-d-H');
+            $previousHour = now()->subHour()->format('Y-m-d-H');
+            
+            $currentMetrics = $redis->hgetall($this->metricsPrefix . 'hourly:' . $currentHour);
+            $previousMetrics = $redis->hgetall($this->metricsPrefix . 'hourly:' . $previousHour);
+            
+            $hits = (int)($currentMetrics['hits'] ?? 0);
+            $misses = (int)($currentMetrics['misses'] ?? 0);
+            $requests = (int)($currentMetrics['requests'] ?? 0);
+            
+            return [
+                'current_hour' => [
+                    'hits' => $hits,
+                    'misses' => $misses,
+                    'requests' => $requests,
+                    'hit_rate' => $requests > 0 ? round(($hits / $requests) * 100, 2) : 0,
+                ],
+                'previous_hour' => [
+                    'hits' => (int)($previousMetrics['hits'] ?? 0),
+                    'misses' => (int)($previousMetrics['misses'] ?? 0),
+                    'requests' => (int)($previousMetrics['requests'] ?? 0),
+                    'hit_rate' => (int)($previousMetrics['requests'] ?? 0) > 0 
+                        ? round(((int)($previousMetrics['hits'] ?? 0) / (int)$previousMetrics['requests']) * 100, 2) 
+                        : 0,
+                ],
+            ];
+        } catch (\Exception $e) {
+            Log::warning('Failed to get cache metrics', ['error' => $e->getMessage()]);
+            return [
+                'current_hour' => ['hits' => 0, 'misses' => 0, 'requests' => 0, 'hit_rate' => 0],
+                'previous_hour' => ['hits' => 0, 'misses' => 0, 'requests' => 0, 'hit_rate' => 0],
+            ];
+        }
     }
 
     /**
@@ -118,6 +323,7 @@ class TrackingService
             'delivered_today' => Shipment::where('current_status', 'delivered')
                 ->whereDate('updated_at', today())
                 ->count(),
+            'cache_metrics' => $this->getCacheMetrics(),
         ];
     }
 }

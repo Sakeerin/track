@@ -64,7 +64,7 @@ class ShipmentFormatter
     /**
      * Format timeline data with enhanced event information
      */
-    private function formatTimeline($events): array
+    public function formatTimeline($events): array
     {
         return $events->map(function ($event) {
             return [
