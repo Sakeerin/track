@@ -262,7 +262,7 @@
   - Measure API response times and frontend rendering performance
   - _Requirements: 3.2, 3.3_
 
-- [ ] 9. Build admin console and authentication
+- [x] 9. Build admin console and authentication
 
   - Implement OAuth2/OIDC authentication with Google/Microsoft
   - Create role-based access control (RBAC) system
@@ -271,7 +271,7 @@
   - Create monitoring dashboards for system health
   - _Requirements: 5.1, 5.2, 5.3, 5.4, 5.5, 6.1, 6.2, 6.3, 6.4, 6.5, 9.2_
 
-- [ ] 9.1 Set up authentication and RBAC
+- [x] 9.1 Set up authentication and RBAC
 
   - Configure Laravel Sanctum with OAuth2/OIDC providers
   - Implement role-based permissions (admin, ops, cs, readonly)
@@ -280,7 +280,7 @@
   - Build audit logging for administrative actions
   - _Requirements: 5.1, 6.5, 9.2_
 
-- [ ] 9.2 Create admin search and management interface
+- [x] 9.2 Create admin search and management interface
 
   - Build advanced search with filters (tracking no., phone, date range, facility)
   - Implement shipment detail view with events timeline and raw payloads
@@ -289,7 +289,7 @@
   - Build subscription management for customer notifications
   - _Requirements: 5.2, 5.3, 5.4_
 
-- [ ] 9.3 Implement monitoring dashboards
+- [x] 9.3 Implement monitoring dashboards
 
   - Create system health dashboard (events/min, queue lag, SLA metrics)
   - Build exception monitoring with alert thresholds
@@ -298,7 +298,7 @@
   - Create user activity and audit trail views
   - _Requirements: 6.1, 6.2, 6.3, 6.4_
 
-- [ ] 9.4 Write admin console tests
+- [x] 9.4 Write admin console tests
 
   - Test authentication flows and permission enforcement
   - Validate search functionality with various filter combinations

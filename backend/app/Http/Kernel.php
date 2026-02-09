@@ -63,7 +63,9 @@ class Kernel extends HttpKernel
         'signed' => \App\Http\Middleware\ValidateSignature::class,
         'throttle' => \Illuminate\Routing\Middleware\ThrottleRequests::class,
         'verified' => \Illuminate\Auth\Middleware\EnsureEmailIsVerified::class,
-        'hmac.signature' => \App\Http\Middleware\ValidateHmacSignature::class,
+'hmac.signature' => \App\Http\Middleware\ValidateHmacSignature::class,
         'api.key' => \App\Http\Middleware\ValidateApiKey::class,
+        'role' => \App\Http\Middleware\EnsureUserHasRole::class,
+        'permission' => \App\Http\Middleware\EnsureUserHasPermission::class,
     ];
 }
