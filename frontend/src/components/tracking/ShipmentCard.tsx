@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { format, formatDistanceToNow } from 'date-fns';
 import { enUS, th } from 'date-fns/locale';
+import toast from 'react-hot-toast';
 import { Shipment, ShipmentStatus } from '../../types/tracking.types';
 import Timeline from './Timeline';
 import ProgressBar from './ProgressBar';
@@ -95,6 +96,17 @@ const ShipmentCard: React.FC<ShipmentCardProps> = ({
   const unresolvedExceptions = shipment.exceptions?.filter(ex => !ex.resolved) || [];
   const latestEvent = shipment.events[0];
 
+  const handleShareLink = async (): Promise<void> => {
+    const url = `${window.location.origin}/track/${shipment.trackingNumber}`;
+
+    try {
+      await navigator.clipboard.writeText(url);
+      toast.success(t('shipment.shareCopied', 'Share link copied'));
+    } catch {
+      toast.error(t('shipment.shareCopyFailed', 'Unable to copy share link'));
+    }
+  };
+
   return (
     <div className={`bg-white rounded-lg shadow-md overflow-hidden ${className}`}>
       {/* Exception Banner */}
@@ -126,6 +138,13 @@ const ShipmentCard: React.FC<ShipmentCardProps> = ({
             <span className={getStatusBadgeClass(shipment.status)}>
               {t(`status.${shipment.status}`, shipment.status)}
             </span>
+            <button
+              type="button"
+              onClick={handleShareLink}
+              className="text-xs px-2.5 py-1 border border-gray-300 rounded-md text-gray-700 hover:bg-gray-50"
+            >
+              {t('shipment.share', 'Share')}
+            </button>
           </div>
         </div>
 

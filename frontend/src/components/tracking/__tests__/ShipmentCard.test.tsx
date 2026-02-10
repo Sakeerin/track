@@ -64,6 +64,14 @@ const mockShipment: Shipment = {
 };
 
 describe('ShipmentCard', () => {
+  beforeEach(() => {
+    Object.assign(navigator, {
+      clipboard: {
+        writeText: jest.fn().mockResolvedValue(undefined),
+      },
+    });
+  });
+
   it('renders shipment information correctly', () => {
     renderWithI18n(<ShipmentCard shipment={mockShipment} />);
 
@@ -77,7 +85,11 @@ describe('ShipmentCard', () => {
   it('displays status badge with correct styling', () => {
     renderWithI18n(<ShipmentCard shipment={mockShipment} />);
 
-    const statusBadge = screen.getByText('In Transit');
+    const statusBadge = screen
+      .getAllByText('In Transit')
+      .find((node) => node.className.includes('bg-yellow-100'));
+
+    expect(statusBadge).toBeTruthy();
     expect(statusBadge).toHaveClass('bg-yellow-100', 'text-yellow-800');
   });
 
@@ -135,7 +147,11 @@ describe('ShipmentCard', () => {
 
     renderWithI18n(<ShipmentCard shipment={deliveredShipment} />);
 
-    const statusBadge = screen.getByText('Delivered');
+    const statusBadge = screen
+      .getAllByText('Delivered')
+      .find((node) => node.className.includes('bg-green-100'));
+
+    expect(statusBadge).toBeTruthy();
     expect(statusBadge).toHaveClass('bg-green-100', 'text-green-800');
   });
 
@@ -149,5 +165,15 @@ describe('ShipmentCard', () => {
 
     expect(screen.getByText('TH1234567890')).toBeInTheDocument();
     expect(screen.queryByText(/Latest Update/)).not.toBeInTheDocument();
+  });
+
+  it('copies share link for a shipment', async () => {
+    renderWithI18n(<ShipmentCard shipment={mockShipment} />);
+
+    fireEvent.click(screen.getByText('Share'));
+
+    expect(navigator.clipboard.writeText).toHaveBeenCalledWith(
+      expect.stringContaining('/track/TH1234567890')
+    );
   });
 });
