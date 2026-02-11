@@ -1,0 +1,29 @@
+groups:
+  - name: parcel-tracking-availability
+    rules:
+      - alert: PublicApiDown
+        expr: probe_success{job="blackbox-http", instance="http://backend:8000/api/tracking/health"} == 0
+        for: 2m
+        labels:
+          severity: critical
+        annotations:
+          summary: Public tracking API health endpoint is down
+          description: Tracking health check has failed for more than 2 minutes.
+
+      - alert: EventIngestionDown
+        expr: probe_success{job="blackbox-http", instance="http://backend:8000/api/events/health"} == 0
+        for: 2m
+        labels:
+          severity: critical
+        annotations:
+          summary: Event ingestion API is down
+          description: Event ingestion health check has failed for more than 2 minutes.
+
+      - alert: HighApiLatency
+        expr: probe_duration_seconds{job="blackbox-http", instance="http://backend:8000/api/tracking/health"} > 1.5
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: Tracking API latency is high
+          description: Tracking health endpoint response time is above 1.5 seconds.

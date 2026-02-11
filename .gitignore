@@ -11,6 +11,7 @@ vendor/
 
 # Environment files
 .env
+.env.prod
 .env.local
 .env.development.local
 .env.test.local

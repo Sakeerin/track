@@ -13,7 +13,9 @@ class TrackingService
     private int $statusTtl;
     private int $timelineTtl;
     private int $notFoundTtl;
+    private int $staleTtl;
     private string $cachePrefix;
+    private string $stalePrefix;
     private string $timelinePrefix;
     private bool $metricsEnabled;
     private string $metricsPrefix;
@@ -24,7 +26,9 @@ class TrackingService
         $this->statusTtl = config('cache.shipment.status_ttl', 30);
         $this->timelineTtl = config('cache.shipment.timeline_ttl', 60);
         $this->notFoundTtl = config('cache.shipment.not_found_ttl', 10);
+        $this->staleTtl = config('cache.shipment.stale_ttl', 86400);
         $this->cachePrefix = config('cache.shipment.prefix', 'shipment:');
+        $this->stalePrefix = config('cache.shipment.stale_prefix', 'shipment_stale:');
         $this->timelinePrefix = config('cache.shipment.timeline_prefix', 'shipment_timeline:');
         $this->metricsEnabled = config('cache.metrics.enabled', true);
         $this->metricsPrefix = config('cache.metrics.prefix', 'cache_metrics:');
@@ -61,18 +65,35 @@ class TrackingService
 
         // Fetch uncached shipments from database
         if (!empty($uncachedNumbers)) {
-            $shipments = $this->fetchShipmentsFromDatabase($uncachedNumbers);
+            try {
+                $shipments = $this->fetchShipmentsFromDatabase($uncachedNumbers);
 
-            // Cache the results and add to response
-            foreach ($uncachedNumbers as $trackingNumber) {
-                $shipment = $shipments->get($trackingNumber);
-                $formattedData = $shipment ? $this->formatShipmentData($shipment) : null;
-                
-                // Use different TTL for found vs not found
-                $ttl = $formattedData ? $this->statusTtl : $this->notFoundTtl;
-                
-                Cache::put($this->getCacheKey($trackingNumber), $formattedData, $ttl);
-                $results[$trackingNumber] = $formattedData;
+                // Cache the results and add to response
+                foreach ($uncachedNumbers as $trackingNumber) {
+                    $shipment = $shipments->get($trackingNumber);
+                    $formattedData = $shipment ? $this->formatShipmentData($shipment) : null;
+
+                    // Use different TTL for found vs not found
+                    $ttl = $formattedData ? $this->statusTtl : $this->notFoundTtl;
+
+                    Cache::put($this->getCacheKey($trackingNumber), $formattedData, $ttl);
+
+                    if ($formattedData !== null) {
+                        Cache::put($this->getStaleCacheKey($trackingNumber), $formattedData, $this->staleTtl);
+                    }
+
+                    $results[$trackingNumber] = $formattedData;
+                }
+            } catch (\Throwable $exception) {
+                Log::warning('Tracking database lookup failed, falling back to stale cache', [
+                    'error' => $exception->getMessage(),
+                    'tracking_numbers' => $uncachedNumbers,
+                ]);
+
+                foreach ($uncachedNumbers as $trackingNumber) {
+                    $staleData = Cache::get($this->getStaleCacheKey($trackingNumber));
+                    $results[$trackingNumber] = $staleData;
+                }
             }
         }
 
@@ -157,11 +178,20 @@ class TrackingService
     }
 
     /**
+     * Get stale cache key for tracking number
+     */
+    private function getStaleCacheKey(string $trackingNumber): string
+    {
+        return $this->stalePrefix . $trackingNumber;
+    }
+
+    /**
      * Invalidate cache for a tracking number
      */
     public function invalidateCache(string $trackingNumber): void
     {
         Cache::forget($this->getCacheKey($trackingNumber));
+        Cache::forget($this->getStaleCacheKey($trackingNumber));
         Cache::forget($this->getTimelineCacheKey($trackingNumber));
         Log::info('Cache invalidated for tracking number', ['tracking_number' => $trackingNumber]);
     }
@@ -173,6 +203,7 @@ class TrackingService
     {
         foreach ($trackingNumbers as $trackingNumber) {
             Cache::forget($this->getCacheKey($trackingNumber));
+            Cache::forget($this->getStaleCacheKey($trackingNumber));
             Cache::forget($this->getTimelineCacheKey($trackingNumber));
         }
         Log::info('Cache invalidated for multiple tracking numbers', ['count' => count($trackingNumbers)]);
@@ -207,6 +238,7 @@ class TrackingService
         foreach ($shipments as $shipment) {
             $formattedData = $this->formatShipmentData($shipment);
             Cache::put($this->getCacheKey($shipment->tracking_number), $formattedData, $this->statusTtl);
+            Cache::put($this->getStaleCacheKey($shipment->tracking_number), $formattedData, $this->staleTtl);
         }
 
         Log::info('Cache warmed for active shipments', ['count' => $shipments->count()]);
@@ -237,6 +269,10 @@ class TrackingService
             $formattedData = $shipment ? $this->formatShipmentData($shipment) : null;
             $ttl = $formattedData ? $this->statusTtl : $this->notFoundTtl;
             Cache::put($this->getCacheKey($trackingNumber), $formattedData, $ttl);
+
+            if ($formattedData !== null) {
+                Cache::put($this->getStaleCacheKey($trackingNumber), $formattedData, $this->staleTtl);
+            }
         }
 
         Log::info('Shipments prefetched into cache', ['count' => count($uncachedNumbers)]);

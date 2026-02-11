@@ -1,0 +1,256 @@
+services:
+  postgres:
+    image: postgres:15-alpine
+    container_name: parcel_postgres_prod
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-parcel_tracking}
+      POSTGRES_USER: ${POSTGRES_USER:-parcel_user}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-change_me}
+    command:
+      - postgres
+      - -c
+      - max_connections=200
+      - -c
+      - shared_buffers=256MB
+      - -c
+      - archive_mode=on
+      - -c
+      - archive_timeout=900
+      - -c
+      - archive_command=test ! -f /backups/wal/%f && cp %p /backups/wal/%f
+    volumes:
+      - postgres_data_prod:/var/lib/postgresql/data
+      - backup_data:/backups
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-parcel_user} -d ${POSTGRES_DB:-parcel_tracking}"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+    networks:
+      - parcel_prod_network
+
+  redis:
+    image: redis:7-alpine
+    container_name: parcel_redis_prod
+    restart: unless-stopped
+    command: ["redis-server", "--appendonly", "yes", "--save", "900", "1", "--save", "300", "10"]
+    volumes:
+      - redis_data_prod:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+    networks:
+      - parcel_prod_network
+
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: parcel_backend_prod
+    restart: unless-stopped
+    environment:
+      APP_ENV: production
+      APP_DEBUG: "false"
+      APP_URL: ${APP_URL:-https://tracking.local}
+      DB_CONNECTION: pgsql
+      DB_HOST: postgres
+      DB_PORT: 5432
+      DB_DATABASE: ${POSTGRES_DB:-parcel_tracking}
+      DB_USERNAME: ${POSTGRES_USER:-parcel_user}
+      DB_PASSWORD: ${POSTGRES_PASSWORD:-change_me}
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+      LOG_CHANNEL: stack
+      LOG_STACK: daily,stderr
+      CACHE_DRIVER: redis
+      SESSION_DRIVER: redis
+      QUEUE_CONNECTION: redis
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "curl -fsS http://localhost:8000/api/tracking/health >/dev/null || exit 1"]
+      interval: 30s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+    networks:
+      - parcel_prod_network
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: parcel_frontend_prod
+    restart: unless-stopped
+    environment:
+      REACT_APP_API_URL: ${REACT_APP_API_URL:-https://tracking.local/api}
+      NODE_ENV: production
+    depends_on:
+      backend:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "wget -q --spider http://localhost:3000 || exit 1"]
+      interval: 30s
+      timeout: 5s
+      retries: 5
+    networks:
+      - parcel_prod_network
+
+  nginx:
+    image: nginx:1.27-alpine
+    container_name: parcel_nginx_prod
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./docker/nginx/nginx.prod.conf:/etc/nginx/nginx.conf:ro
+      - ./docker/nginx/ssl:/etc/nginx/ssl:ro
+    depends_on:
+      backend:
+        condition: service_healthy
+      frontend:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "wget -q --spider http://localhost/healthz || exit 1"]
+      interval: 20s
+      timeout: 5s
+      retries: 5
+    networks:
+      - parcel_prod_network
+
+  db-backup:
+    image: postgres:15-alpine
+    container_name: parcel_db_backup
+    restart: unless-stopped
+    environment:
+      PGPASSWORD: ${POSTGRES_PASSWORD:-change_me}
+      DB_HOST: postgres
+      DB_PORT: 5432
+      DB_NAME: ${POSTGRES_DB:-parcel_tracking}
+      DB_USER: ${POSTGRES_USER:-parcel_user}
+      BACKUP_DIR: /backups/full
+      WAL_DIR: /backups/wal
+      BACKUP_RETENTION_DAYS: ${BACKUP_RETENTION_DAYS:-14}
+    volumes:
+      - backup_data:/backups
+      - ./docker/backup.sh:/scripts/backup.sh:ro
+      - ./docker/restore.sh:/scripts/restore.sh:ro
+      - ./docker/verify-backup.sh:/scripts/verify-backup.sh:ro
+    depends_on:
+      postgres:
+        condition: service_healthy
+    command: >
+      sh -c "chmod +x /scripts/backup.sh /scripts/verify-backup.sh &&
+      /scripts/backup.sh &&
+      while true; do sleep 86400; /scripts/backup.sh; done"
+    networks:
+      - parcel_prod_network
+
+  prometheus:
+    image: prom/prometheus:v2.55.1
+    container_name: parcel_prometheus
+    restart: unless-stopped
+    command:
+      - --config.file=/etc/prometheus/prometheus.yml
+      - --storage.tsdb.retention.time=30d
+    volumes:
+      - ./docker/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - ./docker/alert-rules.yml:/etc/prometheus/alert-rules.yml:ro
+      - prometheus_data:/prometheus
+    ports:
+      - "9090:9090"
+    depends_on:
+      - nginx
+      - blackbox
+    networks:
+      - parcel_prod_network
+
+  alertmanager:
+    image: prom/alertmanager:v0.28.1
+    container_name: parcel_alertmanager
+    restart: unless-stopped
+    command:
+      - --config.file=/etc/alertmanager/alertmanager.yml
+      - --config.expand-env
+    environment:
+      ALERT_SLACK_WEBHOOK_URL: ${ALERT_SLACK_WEBHOOK_URL:-https://hooks.slack.com/services/replace/me}
+      ALERT_INCIDENT_WEBHOOK_URL: ${ALERT_INCIDENT_WEBHOOK_URL:-https://incident.example.invalid/v1/alerts}
+      ALERT_SMTP_SMARTHOST: ${ALERT_SMTP_SMARTHOST:-smtp.example.com:587}
+      ALERT_SMTP_FROM: ${ALERT_SMTP_FROM:-alerts@example.com}
+      ALERT_SMTP_AUTH_USERNAME: ${ALERT_SMTP_AUTH_USERNAME:-}
+      ALERT_SMTP_AUTH_PASSWORD: ${ALERT_SMTP_AUTH_PASSWORD:-}
+      ALERT_EMAIL_TO: ${ALERT_EMAIL_TO:-ops@example.com}
+    volumes:
+      - ./docker/alertmanager.yml:/etc/alertmanager/alertmanager.yml:ro
+    ports:
+      - "9093:9093"
+    networks:
+      - parcel_prod_network
+
+  blackbox:
+    image: prom/blackbox-exporter:v0.25.0
+    container_name: parcel_blackbox
+    restart: unless-stopped
+    ports:
+      - "9115:9115"
+    networks:
+      - parcel_prod_network
+
+  loki:
+    image: grafana/loki:3.1.1
+    container_name: parcel_loki
+    restart: unless-stopped
+    command: -config.file=/etc/loki/local-config.yaml
+    ports:
+      - "3100:3100"
+    networks:
+      - parcel_prod_network
+
+  promtail:
+    image: grafana/promtail:3.1.1
+    container_name: parcel_promtail
+    restart: unless-stopped
+    command: -config.file=/etc/promtail/config.yml
+    volumes:
+      - ./docker/promtail.yml:/etc/promtail/config.yml:ro
+      - /var/lib/docker/containers:/var/lib/docker/containers:ro
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+    depends_on:
+      - loki
+    networks:
+      - parcel_prod_network
+
+  grafana:
+    image: grafana/grafana:11.2.0
+    container_name: parcel_grafana
+    restart: unless-stopped
+    environment:
+      GF_SECURITY_ADMIN_USER: ${GRAFANA_ADMIN_USER:-grafana-admin}
+      GF_SECURITY_ADMIN_PASSWORD: ${GRAFANA_ADMIN_PASSWORD:-change-this-immediately}
+    volumes:
+      - grafana_data:/var/lib/grafana
+    ports:
+      - "3001:3000"
+    depends_on:
+      - prometheus
+      - loki
+    networks:
+      - parcel_prod_network
+
+volumes:
+  postgres_data_prod:
+  redis_data_prod:
+  backup_data:
+  prometheus_data:
+  grafana_data:
+
+networks:
+  parcel_prod_network:
+    driver: bridge

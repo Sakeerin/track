@@ -1,0 +1,35 @@
+global:
+  resolve_timeout: 5m
+  smtp_smarthost: '${ALERT_SMTP_SMARTHOST}'
+  smtp_from: '${ALERT_SMTP_FROM}'
+  smtp_auth_username: '${ALERT_SMTP_AUTH_USERNAME}'
+  smtp_auth_password: '${ALERT_SMTP_AUTH_PASSWORD}'
+
+route:
+  receiver: default-receiver
+  group_wait: 30s
+  group_interval: 5m
+  repeat_interval: 2h
+  routes:
+    - receiver: critical-receiver
+      matchers:
+        - severity="critical"
+    - receiver: warning-receiver
+      matchers:
+        - severity="warning"
+
+receivers:
+  - name: default-receiver
+  - name: warning-receiver
+    email_configs:
+      - to: '${ALERT_EMAIL_TO}'
+        send_resolved: true
+  - name: critical-receiver
+    slack_configs:
+      - api_url: '${ALERT_SLACK_WEBHOOK_URL}'
+        channel: '#ops-alerts'
+        username: 'parcel-alertmanager'
+        send_resolved: true
+    webhook_configs:
+      - url: '${ALERT_INCIDENT_WEBHOOK_URL}'
+        send_resolved: true

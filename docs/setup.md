@@ -117,30 +117,63 @@ npm test
 
 ## Production Deployment
 
-1. Build the applications:
-   ```bash
-   # Frontend
-   cd frontend && npm run build
+1. Prepare TLS certificate files:
+   - Place `fullchain.pem` and `privkey.pem` in `docker/nginx/ssl/`
 
-   # Backend
-   cd backend && composer install --optimize-autoloader --no-dev
+2. Configure production variables in your shell or `.env` file:
+   ```bash
+   cp .env.prod.example .env.prod
+   # Edit .env.prod with real secrets and alert destinations
+   ```
+   - Required: `POSTGRES_PASSWORD`, `GRAFANA_ADMIN_PASSWORD`
+   - Alerting: `ALERT_SLACK_WEBHOOK_URL`, `ALERT_INCIDENT_WEBHOOK_URL`, SMTP vars
+
+3. Deploy with rolling update script:
+   ```bash
+   docker compose --env-file .env.prod -f docker-compose.prod.yml up -d postgres redis
+   ENV_FILE=.env.prod COMPOSE_FILE=docker-compose.prod.yml sh docker/deploy.sh
    ```
 
-2. Configure production environment variables
-
-3. Run database migrations:
+4. Or start full production stack directly:
    ```bash
-   php artisan migrate --force
+   docker compose --env-file .env.prod -f docker-compose.prod.yml up -d
    ```
 
-4. Cache configuration:
+5. Run migration/seed manually if needed:
    ```bash
-   php artisan config:cache
-   php artisan route:cache
-   php artisan view:cache
+   docker compose -f docker-compose.prod.yml run --rm backend php artisan migrate --force
+   docker compose -f docker-compose.prod.yml run --rm backend php artisan db:seed --force
    ```
 
-5. Start queue workers and scheduler
+## Backup and Restore
+
+- Daily full backup is run by `db-backup` service using `docker/backup.sh`
+- WAL archive is generated every 15 minutes by PostgreSQL (`archive_timeout=900`)
+
+Restore procedure:
+
+```bash
+docker compose -f docker-compose.prod.yml run --rm \
+  -e BACKUP_FILE=/backups/full/<backup-file>.dump \
+  db-backup sh /scripts/restore.sh
+```
+
+Monthly restore verification:
+
+```bash
+docker compose -f docker-compose.prod.yml run --rm \
+  -e BACKUP_FILE=/backups/full/<backup-file>.dump \
+  db-backup sh /scripts/verify-backup.sh
+```
+
+## Monitoring
+
+- Nginx health endpoint: `https://<host>/healthz`
+- Tracking health endpoint: `https://<host>/api/tracking/health`
+- Event ingestion health endpoint: `https://<host>/api/events/health`
+- Prometheus: `http://<host>:9090`
+- Alertmanager: `http://<host>:9093`
+- Grafana: `http://<host>:3001`
 
 ## Troubleshooting
 

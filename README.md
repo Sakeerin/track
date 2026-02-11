@@ -45,3 +45,27 @@ A comprehensive parcel tracking system providing real-time shipment visibility f
 ## Documentation
 
 See the `docs/` directory for detailed documentation.
+
+## Production Deployment and Monitoring
+
+- Production Compose stack: `docker-compose.prod.yml`
+- Zero-downtime deployment script: `docker/deploy.sh`
+- Backup scripts:
+  - `docker/backup.sh` (daily full backup)
+  - `docker/restore.sh` (restore from archive)
+  - `docker/verify-backup.sh` (monthly restore smoke test)
+- Monitoring stack includes Prometheus, Alertmanager, Blackbox Exporter, Loki, Promtail, and Grafana
+
+Quick start:
+
+```bash
+cp .env.prod.example .env.prod
+# update secrets and alert endpoints in .env.prod
+docker compose --env-file .env.prod -f docker-compose.prod.yml up -d
+```
+
+Monitoring endpoints:
+
+- Prometheus: http://localhost:9090
+- Alertmanager: http://localhost:9093
+- Grafana: http://localhost:3001

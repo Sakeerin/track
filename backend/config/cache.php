@@ -129,8 +129,12 @@ return [
 
         // Cache key prefixes
         'prefix' => 'shipment:',
+        'stale_prefix' => 'shipment_stale:',
         'timeline_prefix' => 'shipment_timeline:',
         'stats_prefix' => 'shipment_stats:',
+
+        // TTL for stale shipment cache used during graceful degradation (in seconds)
+        'stale_ttl' => env('CACHE_SHIPMENT_STALE_TTL', 86400),
 
         // Enable cache warming for frequently accessed shipments
         'warm_cache' => env('CACHE_WARM_ENABLED', true),
