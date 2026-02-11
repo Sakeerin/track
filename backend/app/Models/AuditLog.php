@@ -6,6 +6,7 @@ use Illuminate\Database\Eloquent\Concerns\HasUuids;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\MorphTo;
+use Illuminate\Http\Request;
 
 class AuditLog extends Model
 {
@@ -104,17 +105,56 @@ class AuditLog extends Model
         ?array $newValues = null,
         ?array $metadata = null
     ): self {
+        /** @var Request|null $request */
+        $request = app()->bound('request') ? request() : null;
+
         return self::create([
             'user_id' => $user?->id,
             'action' => $action,
             'entity_type' => $entityType,
             'entity_id' => $entityId,
-            'old_values' => $oldValues,
-            'new_values' => $newValues,
-            'ip_address' => request()->ip(),
-            'user_agent' => request()->userAgent(),
-            'metadata' => $metadata,
+            'old_values' => self::redactSensitiveData($oldValues),
+            'new_values' => self::redactSensitiveData($newValues),
+            'ip_address' => $request ? $request->ip() : null,
+            'user_agent' => $request ? $request->userAgent() : null,
+            'metadata' => self::redactSensitiveData($metadata),
         ]);
+    }
+
+    private static function redactSensitiveData(?array $values): ?array
+    {
+        if ($values === null) {
+            return null;
+        }
+
+        $sensitiveKeys = [
+            'email',
+            'email_hash',
+            'phone',
+            'destination',
+            'destination_hash',
+            'password',
+            'token',
+            'api_key',
+            'secret',
+        ];
+
+        $redacted = [];
+        foreach ($values as $key => $value) {
+            $normalizedKey = strtolower((string) $key);
+            $isSensitive = false;
+
+            foreach ($sensitiveKeys as $sensitiveKey) {
+                if (str_contains($normalizedKey, $sensitiveKey)) {
+                    $isSensitive = true;
+                    break;
+                }
+            }
+
+            $redacted[$key] = $isSensitive ? '[REDACTED]' : $value;
+        }
+
+        return $redacted;
     }
 
     /**

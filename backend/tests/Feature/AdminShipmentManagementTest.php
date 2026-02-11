@@ -363,7 +363,7 @@ class AdminShipmentManagementTest extends TestCase
         $shipment = Shipment::factory()->create();
         $shipment->subscriptions()->create([
             'channel' => 'email',
-            'contact_value' => 'test@example.com',
+            'destination' => 'test@example.com',
             'active' => true,
             'events' => ['DELIVERED'],
         ]);

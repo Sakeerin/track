@@ -4,9 +4,9 @@ namespace App\Http\Middleware;
 
 use Closure;
 use Illuminate\Http\Request;
-use Illuminate\Http\Response;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Cache;
+use Symfony\Component\HttpFoundation\Response;
 
 class ValidateApiKey
 {
@@ -63,6 +63,10 @@ class ValidateApiKey
 
         // Increment rate limit counter
         Cache::put($rateLimitKey, $currentCount + 1, 60);
+
+        $usageKey = 'api_usage:' . hash('sha256', $apiKey) . ':' . now()->format('YmdHi');
+        Cache::add($usageKey, 0, 120);
+        Cache::increment($usageKey);
 
         Log::info('API key validation successful', [
             'key_prefix' => substr($apiKey, 0, 8) . '...',

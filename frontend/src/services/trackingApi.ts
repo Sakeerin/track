@@ -1,5 +1,6 @@
 import axios, { AxiosError, AxiosInstance } from 'axios';
 import { TrackingRequest, TrackingResponse, Shipment } from '../types/tracking.types';
+import { getRecaptchaToken } from '../utils/recaptcha';
 
 const API_BASE_URL = process.env.REACT_APP_API_URL || '/api';
 
@@ -186,9 +187,16 @@ export const trackingApi = {
    */
   async trackShipments(trackingNumbers: string[]): Promise<TrackingResponse> {
     const request: TrackingRequest = { trackingNumbers };
+    const recaptchaToken = await getRecaptchaToken('public_tracking');
     
     const response = await retryRequest(async () => {
-      return await apiClient.post<TrackingResponse>('/tracking', request);
+      return await apiClient.post<TrackingResponse>('/tracking', request, {
+        headers: recaptchaToken
+          ? {
+              'X-Recaptcha-Token': recaptchaToken,
+            }
+          : undefined,
+      });
     });
     
     // Transform dates

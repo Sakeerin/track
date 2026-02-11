@@ -17,6 +17,10 @@ class Kernel extends ConsoleKernel
             ->everyFiveMinutes()
             ->withoutOverlapping()
             ->runInBackground();
+
+        $schedule->command('data:cleanup --force')
+            ->dailyAt('02:00')
+            ->withoutOverlapping();
     }
 
     /**

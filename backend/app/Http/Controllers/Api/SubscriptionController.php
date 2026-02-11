@@ -39,7 +39,7 @@ class SubscriptionController extends Controller
         // Check if subscription already exists
         $existingSubscription = Subscription::where('shipment_id', $shipment->id)
             ->where('channel', $request->channel)
-            ->where('destination', $request->destination)
+            ->where('destination_hash', Subscription::hashContact($request->destination))
             ->first();
 
         if ($existingSubscription) {

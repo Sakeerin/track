@@ -16,6 +16,7 @@ class NotificationLog extends Model
         'event_id',
         'channel',
         'destination',
+        'destination_hash',
         'status',
         'error_message',
         'sent_at',
@@ -24,10 +25,25 @@ class NotificationLog extends Model
     ];
 
     protected $casts = [
+        'destination' => 'encrypted',
         'sent_at' => 'datetime',
         'delivered_at' => 'datetime',
         'metadata' => 'array',
     ];
+
+    protected static function booted(): void
+    {
+        static::saving(function (NotificationLog $notificationLog): void {
+            if (!$notificationLog->isDirty('destination')) {
+                return;
+            }
+
+            $value = trim((string) $notificationLog->destination);
+            $notificationLog->destination_hash = $value === ''
+                ? null
+                : hash('sha256', strtolower($value));
+        });
+    }
 
     /**
      * Get the subscription this log belongs to

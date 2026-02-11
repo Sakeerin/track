@@ -17,6 +17,7 @@ class Subscription extends Model
         'shipment_id',
         'channel',
         'destination',
+        'destination_hash',
         'events',
         'active',
         'consent_given',
@@ -26,6 +27,7 @@ class Subscription extends Model
     ];
 
     protected $casts = [
+        'destination' => 'encrypted',
         'events' => 'array',
         'active' => 'boolean',
         'consent_given' => 'boolean',
@@ -179,5 +181,25 @@ class Subscription extends Model
                 $subscription->unsubscribe_token = Str::random(100);
             }
         });
+
+        static::saving(function ($subscription) {
+            if ($subscription->isDirty('destination')) {
+                $subscription->destination_hash = self::hashContact($subscription->destination);
+            }
+        });
+    }
+
+    public static function hashContact(?string $value): ?string
+    {
+        if ($value === null) {
+            return null;
+        }
+
+        $normalized = strtolower(trim($value));
+        if ($normalized === '') {
+            return null;
+        }
+
+        return hash('sha256', $normalized);
     }
 }

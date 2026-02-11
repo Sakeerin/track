@@ -16,9 +16,28 @@ class SupportTicket extends Model
         'tracking_number',
         'name',
         'email',
+        'email_hash',
         'subject',
         'message',
         'source',
         'status',
     ];
+
+    protected $casts = [
+        'email' => 'encrypted',
+    ];
+
+    protected static function booted(): void
+    {
+        static::saving(function (SupportTicket $ticket): void {
+            if (!$ticket->isDirty('email')) {
+                return;
+            }
+
+            $value = trim((string) $ticket->email);
+            $ticket->email_hash = $value === ''
+                ? null
+                : hash('sha256', strtolower($value));
+        });
+    }
 }

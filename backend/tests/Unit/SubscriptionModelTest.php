@@ -25,8 +25,10 @@ class SubscriptionModelTest extends TestCase
         $this->assertDatabaseHas('subscriptions', [
             'shipment_id' => $shipment->id,
             'channel' => 'email',
-            'destination' => 'test@example.com',
+            'destination_hash' => hash('sha256', 'test@example.com'),
         ]);
+
+        $this->assertEquals('test@example.com', $subscription->fresh()->destination);
     }
 
     public function test_subscription_casts_events_to_array()

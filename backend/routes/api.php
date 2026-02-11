@@ -59,7 +59,7 @@ Route::get('/tracking/health', [TrackingController::class, 'health'])
 
 // Multi-shipment tracking endpoint
 Route::post('/tracking', [TrackingController::class, 'track'])
-    ->middleware(['throttle:tracking'])
+    ->middleware(['throttle:tracking', 'recaptcha'])
     ->name('tracking.multi');
 
 // Single shipment tracking endpoint (SEO-friendly)
@@ -141,7 +141,7 @@ Route::post('/notifications/{logId}/delivered', [SubscriptionController::class, 
 |--------------------------------------------------------------------------
 */
 
-Route::prefix('admin')->middleware(['auth:sanctum'])->group(function () {
+Route::prefix('admin')->middleware(['auth:sanctum', 'admin.ip'])->group(function () {
     /*
     |--------------------------------------------------------------------------
     | Dashboard & Monitoring (readonly role can access)

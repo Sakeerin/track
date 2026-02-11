@@ -11,6 +11,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
+use App\Models\Subscription;
 
 class AdminShipmentController extends Controller
 {
@@ -74,14 +75,14 @@ class AdminShipmentController extends Controller
             // Search by phone or email in subscriptions
             if ($request->filled('phone')) {
                 $query->whereHas('subscriptions', function ($q) use ($request) {
-                    $q->where('contact_value', 'like', '%' . $request->phone . '%')
+                    $q->where('destination_hash', Subscription::hashContact($request->phone))
                         ->where('channel', 'sms');
                 });
             }
 
             if ($request->filled('email')) {
                 $query->whereHas('subscriptions', function ($q) use ($request) {
-                    $q->where('contact_value', 'like', '%' . $request->email . '%')
+                    $q->where('destination_hash', Subscription::hashContact($request->email))
                         ->where('channel', 'email');
                 });
             }
@@ -194,7 +195,7 @@ class AdminShipmentController extends Controller
                         return [
                             'id' => $sub->id,
                             'channel' => $sub->channel,
-                            'contact_value' => $this->maskContactValue($sub->contact_value, $sub->channel),
+                            'contact_value' => $this->maskContactValue($sub->destination, $sub->channel),
                             'active' => $sub->active,
                             'events' => $sub->events,
                             'created_at' => $sub->created_at?->toISOString(),

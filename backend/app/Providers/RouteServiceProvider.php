@@ -25,23 +25,28 @@ class RouteServiceProvider extends ServiceProvider
     public function boot(): void
     {
         RateLimiter::for('api', function (Request $request) {
-            return Limit::perMinute(60)->by($request->user()?->id ?: $request->ip());
+            return Limit::perMinute((int) config('security.rate_limits.api_per_minute', 60))
+                ->by($request->user()?->id ?: $request->ip());
         });
 
         RateLimiter::for('tracking', function (Request $request) {
-            return Limit::perMinute(100)->by($request->ip());
+            return Limit::perMinute((int) config('security.rate_limits.public_per_minute', 100))
+                ->by($request->ip());
         });
 
         RateLimiter::for('admin', function (Request $request) {
-            return Limit::perMinute(500)->by($request->user()?->id ?: $request->ip());
+            return Limit::perMinute((int) config('security.rate_limits.admin_per_minute', 500))
+                ->by($request->user()?->id ?: $request->ip());
         });
 
         RateLimiter::for('webhook', function (Request $request) {
-            return Limit::perMinute(1000)->by($request->header('X-Partner-ID') ?: $request->ip());
+            return Limit::perMinute((int) config('security.rate_limits.webhook_per_minute', 1000))
+                ->by($request->header('X-Partner-ID') ?: $request->ip());
         });
 
         RateLimiter::for('batch', function (Request $request) {
-            return Limit::perMinute(10)->by($request->header('X-API-Key') ?: $request->ip());
+            return Limit::perMinute((int) config('security.rate_limits.batch_per_minute', 10))
+                ->by($request->header('X-API-Key') ?: $request->ip());
         });
 
         $this->routes(function () {
